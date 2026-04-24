@@ -7,7 +7,7 @@ set(CMAKE_C_STANDARD_REQUIRED True)
 
 include_directories(include)
 
-add_executable(lexer
+add_executable(main
   src/main.c
   src/lexer.c
   src/matrices.c
