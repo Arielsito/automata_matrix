@@ -11,4 +11,5 @@ add_executable(main
   src/main.c
   src/lexer.c
   src/matrices.c
+  src/debug.c
 )

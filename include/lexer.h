@@ -4,9 +4,19 @@
 #include "../include/common.h"
 
 typedef enum token_type {
-  TOKEN_IDENTIFIER,
-  TOKEN_NUMBER,
+  // Characters
   TOKEN_LETTER,
+  TOKEN_DIGIT,
+  // Identifiers
+  TOKEN_IDENTIFIER,
+  TOKEN_AUTO, TOKEN_BREAK, TOKEN_CASE, TOKEN_CHAR, TOKEN_CONST, TOKEN_CONTINUE, TOKEN_DEFAULT,
+  TOKEN_DO, TOKEN_DOUBLE, TOKEN_ELSE, TOKEN_ENUM, TOKEN_EXTERN, TOKEN_FLOAT, TOKEN_FOR, TOKEN_GOTO,
+  TOKEN_IF, TOKEN_INT, TOKEN_LONG, TOKEN_REGISTER, TOKEN_RETURN, TOKEN_SHORT, TOKEN_SIGNED,
+  TOKEN_SIZEOF, TOKEN_STATIC, TOKEN_STRUCT, TOKEN_SWITCH, TOKEN_TYPEDEF, TOKEN_UNION, TOKEN_UNSIGNED,
+  TOKEN_VOID, TOKEN_VOLATILE, TOKEN_WHILE,
+  // Numbers
+  TOKEN_INTEGER_LITERAL,
+  TOKEN_DOUBLE_LITERAL,
   TOKEN_EOF,
   TOKEN_ERROR
 } TokenType;
@@ -15,6 +25,7 @@ typedef struct token {
   TokenType type;
   const char *start;
   i32 length;
+  i32 line;
 } Token;
 
 typedef enum action {
@@ -44,6 +55,7 @@ struct dfa {
 
 typedef struct scanner Scanner;
 
+void init_lexer();
 void init_scan(const char*);
 Token scan_token();
 const char* token_type_name(TokenType);

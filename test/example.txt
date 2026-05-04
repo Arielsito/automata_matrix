@@ -1,0 +1,22 @@
+#include <stdio.h>
+
+int main(void) {
+  /* 1. Declaracion de todas las variables al inicio del bloque */
+  int numeros[5] = {10, 20, 30, 40, 50};
+  int suma = 0;
+  int i; /* En ANSI C no puedes declarar 'int i' dentro del for */
+
+  /* 2. Logica y procesamiento */
+  printf("--- Calculadora de Suma de Arreglo ---\n");
+  
+  for (i = 0; i < 5; i++) {
+      suma += numeros[i];
+      printf("Indice %d: sumando %d (Subtotal: %d)\n", i, numeros[i], suma);
+  }
+
+  /* 3. Salida final */
+  printf("--------------------------------------\n");
+  printf("La suma total es: %d\n", suma);
+
+  return 0;
+}
