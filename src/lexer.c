@@ -31,12 +31,12 @@ static u64 hash(const char *str, i32 len) {
   for (i32 i = 0; i < len; i++) {
     hash = ((hash << 5) + hash) + (u8)str[i];
   }
-  return hash % HASH_SIZE;
+  return hash;
 }
 
 static void add_keyword(const char *name, TokenType type) {
   i32 len = strlen(name);
-  u64 h = hash(name, len);
+  u64 h = hash(name, len) % HASH_SIZE;
   while (keywords[h].lexeme != NULL) {
     h = (h + 1) % HASH_SIZE;
   }
@@ -131,7 +131,7 @@ static Token run_dfa(const Dfa *dfa, i32 start) {
 }
 
 static TokenType check_keyword(const char *start, i32 len) {
-  u64 h = hash(start, len);
+  u64 h = hash(start, len) % HASH_SIZE;
   
   while(keywords[h].lexeme != NULL) {
     if ((i32)strlen(keywords[h].lexeme) == len &&
