@@ -5,6 +5,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <string.h>
 
 #define CELL(dfa, state, col) (dfa)->table[(state) * (dfa)->cols + (col)]
 #define COLS(matrix) (i32)(sizeof(matrix[0]) / sizeof(matrix[0][0]))

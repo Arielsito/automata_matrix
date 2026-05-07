@@ -27,7 +27,7 @@ const State letter_dfa[][53] = {
   }
 };
 
-const State number_dfa[][11] = {
+const State digit_dfa[][11] = {
   [0] = {
     {ACTION_NONE, .payload.c = '0', 1}, {ACTION_NONE, .payload.c = '1', 1}, {ACTION_NONE, .payload.c = '2', 1},
     {ACTION_NONE, .payload.c = '3', 1}, {ACTION_NONE, .payload.c = '4', 1}, {ACTION_NONE, .payload.c = '5', 1},
@@ -35,7 +35,7 @@ const State number_dfa[][11] = {
     {ACTION_NONE, .payload.c = '9', 1}, {ACTION_REJECT, .payload.token_type = TOKEN_ERROR, -1}
   },
   [1] = {
-    {ACTION_ACCEPT, .payload.token_type = TOKEN_NUMBER, -1},
+    {ACTION_ACCEPT, .payload.token_type = TOKEN_DIGIT, -1},
   }
 };
 
@@ -46,11 +46,32 @@ const State identifier_dfa[][3] = {
   },
   [1] = {
     {ACTION_CALL, .payload.sub = &letter, 1},
-    {ACTION_CALL, .payload.sub = &number, 1},
+    {ACTION_CALL, .payload.sub = &digit, 1},
     {ACTION_ACCEPT, .payload.token_type = TOKEN_IDENTIFIER, -1}
   }
 };
 
+const State number_dfa[][3] = {
+  [0] = {
+    {ACTION_CALL, .payload.sub = &digit, 1},
+    {ACTION_NONE, .payload.c = '.', 3},
+  },
+  [1] = {
+    {ACTION_CALL, .payload.sub = &digit, 1},
+    {ACTION_NONE, .payload.c = '.', 2},
+    {ACTION_ACCEPT, .payload.token_type = TOKEN_INTEGER_LITERAL, -1}
+  },
+  [2] = {
+    {ACTION_CALL, .payload.sub = &digit, 2},
+    {ACTION_ACCEPT, .payload.token_type = TOKEN_DOUBLE_LITERAL, -1},
+  },
+  [3] = {
+    {ACTION_CALL, .payload.sub = &digit, 2},
+    {ACTION_REJECT, .payload.token_type = TOKEN_ERROR, -1}
+  }
+};
+
 const Dfa letter = { (State *) letter_dfa, ROWS(letter_dfa),  COLS(letter_dfa)};
-const Dfa number = { (State *) number_dfa, ROWS(number_dfa), COLS(number_dfa) };
+const Dfa digit = { (State *) digit_dfa, ROWS(digit_dfa), COLS(digit_dfa) };
 const Dfa identifier = { (State *) identifier_dfa, ROWS(identifier_dfa), COLS(identifier_dfa) };
+const Dfa number = { (State *) number_dfa, ROWS(number_dfa), COLS(number_dfa) };
