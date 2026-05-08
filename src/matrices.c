@@ -233,55 +233,70 @@ const State opLenght1_dfa[][14] = {
     {ACTION_ACCEPT, .payload.token_type = TOKEN_DOT, -1}
   },
   [7] = {
-    {ACTION_ACCEPT, .payload.token_type = TOKEN_RIGHT_PAREN, -1}
-  },
-  [8] = {
-    {ACTION_ACCEPT, .payload.token_type = TOKEN_RIGHT_BRACKET, -1}
-  },
-  [9] = {
-    {ACTION_ACCEPT, .payload.token_type = TOKEN_RIGHT_BRACE, -1}
-  },
-  [10] = {
     {ACTION_ACCEPT, .payload.token_type = TOKEN_LEFT_PAREN, -1}
   },
-  [11] = {
+  [8] = {
     {ACTION_ACCEPT, .payload.token_type = TOKEN_LEFT_BRACKET, -1}
   },
-  [12] = {
+  [9] = {
     {ACTION_ACCEPT, .payload.token_type = TOKEN_LEFT_BRACE, -1}
+  },
+  [10] = {
+    {ACTION_ACCEPT, .payload.token_type = TOKEN_RIGHT_PAREN, -1}
+  },
+  [11] = {
+    {ACTION_ACCEPT, .payload.token_type = TOKEN_RIGHT_BRACKET, -1}
+  },
+  [12] = {
+    {ACTION_ACCEPT, .payload.token_type = TOKEN_RIGHT_BRACE, -1}
   },
   [13] = {
     {ACTION_ACCEPT, .payload.token_type = TOKEN_TAG, -1}
   }
 };
 
-const State stringLiteral_dfa[][2] = {
+const State stringLiteral_dfa[][5] = {
   [0] = {
     {ACTION_NONE, .payload.c = '"', 1}, {ACTION_REJECT, .payload.token_type = TOKEN_ERROR, -1}
   },
   [1] = {
-    {ACTION_NONE, .payload.c = '"', 2}, {ACTION_ANY, .payload.c = ' ', 1}
+    {ACTION_NONE, .payload.c = '"', 2},
+    {ACTION_NONE, .payload.c = '\\', 3},
+    {ACTION_NONE, .payload.c = '\n', 4},
+    {ACTION_NONE, .payload.c = '\0', 4},
+    {ACTION_ANY, .payload.c = 0, 1}
   },
   [2] = {
     {ACTION_ACCEPT, .payload.token_type = TOKEN_STRING_LITERAL, -1}
+  },
+  [3] = {
+    {ACTION_ANY, .payload.c = 0, 1}, {ACTION_REJECT, .payload.token_type = TOKEN_ERROR, -1}
+  },
+  [4] = {
+    {ACTION_REJECT, .payload.token_type = TOKEN_ERROR, -1}
   }
 };
 
-const State charLiteral_dfa[][2] = {
+const State charLiteral_dfa[][3] = {
   [0] = {
     {ACTION_NONE, .payload.c = '\'', 1}, {ACTION_REJECT, .payload.token_type = TOKEN_ERROR, -1}
   },
   [1] = {
-    {ACTION_NONE, .payload.c = '\\', 2}, {ACTION_ANY, .payload.c = ' ', 3}
+    {ACTION_NONE, .payload.c = '\\', 2},
+    {ACTION_NONE, .payload.c = '\'', 5},
+    {ACTION_ANY, .payload.c = 0, 3}
   },
   [2] = {
-    {ACTION_ANY, .payload.c = ' ', 3}
+    {ACTION_ANY, .payload.c = 0, 3}, {ACTION_REJECT, .payload.token_type = TOKEN_ERROR, -1},
   },
   [3] = {
     {ACTION_NONE, .payload.c = '\'', 4}, {ACTION_REJECT, .payload.token_type = TOKEN_ERROR, -1}
   },
   [4] = {
     {ACTION_ACCEPT, .payload.token_type = TOKEN_CHAR_LITERAL, -1}
+  },
+  [5] = {
+    {ACTION_REJECT, .payload.token_type = TOKEN_ERROR, -1}
   }
 };
 

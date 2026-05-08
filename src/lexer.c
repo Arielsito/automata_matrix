@@ -158,6 +158,7 @@ static Token run_dfa(const Dfa *dfa, i32 start) {
             state = s.next_state;
             goto next;
           }
+          break;
       }
     }
     return make_token(TOKEN_ERROR);
