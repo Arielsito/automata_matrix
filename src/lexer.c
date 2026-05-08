@@ -65,80 +65,46 @@ Token scan_token() {
 
   if (*scanner.current == '\0') return make_token(TOKEN_EOF);
 
-  char c = *scanner.current++;
-  switch(c) {
-    case '"':
-      while (*scanner.current != '"' && *scanner.current != '\0') {
-        if (*scanner.current == '\\') scanner.current++;
-        if (*scanner.current == '\n') scanner.line++;
-        scanner.current++;
-      }
-      if (*scanner.current == '\0') return make_token(TOKEN_ERROR);
-      scanner.current++;
-      return make_token(TOKEN_STRING_LITERAL);
-    case '\'':
-      if (*scanner.current == '\\') scanner.current += 2;
-      else scanner.current++; // Length:  1
-      if (*scanner.current != '\'') return make_token(TOKEN_ERROR);
-      scanner.current++;
-      return make_token(TOKEN_CHAR_LITERAL);
-    case '(': return make_token(TOKEN_LEFT_PAREN);
-    case ')': return make_token(TOKEN_RIGHT_PAREN);
-    case '{': return make_token(TOKEN_LEFT_BRACE);
-    case '}': return make_token(TOKEN_RIGHT_BRACE);
-    case '[': return make_token(TOKEN_LEFT_BRACKET);
-    case ']': return make_token(TOKEN_RIGHT_BRACKET);
-    case ',': return make_token(TOKEN_COMMA);
-    case '.': return make_token(TOKEN_DOT);
-    case '-':
-      if (match('-')) return make_token(TOKEN_MINUS_MINUS);
-      if (match('=')) return make_token(TOKEN_MINUS_EQUAL);
-      return make_token(TOKEN_MINUS);
-    case '+':
-      if (match('+')) return make_token(TOKEN_PLUS_PLUS);
-      if (match('=')) return make_token(TOKEN_PLUS_EQUAL);
-      return make_token(TOKEN_PLUS);
-    case '*':
-      if (match('=')) return make_token(TOKEN_MUL_EQUAL);
-      return make_token(TOKEN_MUL);
-    case '/':
-      if (match('=')) return make_token(TOKEN_DIV_EQUAL);
-      return make_token(TOKEN_DIV);
-    case '%':
-      if (match('=')) return make_token(TOKEN_MOD_EQUAL);
-      return make_token(TOKEN_MOD);
-    case ';': return make_token(TOKEN_SEMICOLON);
-    case ':': return make_token(TOKEN_COLON);
-    case '?': return make_token(TOKEN_QUESTION);
-    case '!': return make_token(match('=') ? TOKEN_NOT_EQUAL : TOKEN_NOT);
-    case '=': return make_token(match('=') ? TOKEN_EQUAL_EQUAL : TOKEN_EQUAL);
-    case '<': return make_token(match('=') ? TOKEN_LESS_EQUAL : TOKEN_LESS);
-    case '>': return make_token(match('=') ? TOKEN_GREATER_EQUAL : TOKEN_GREATER);
-    case '&':
-      if (match('&')) return make_token(TOKEN_AND);
-      return make_token(TOKEN_ERROR);
-    case '|':
-      if (match('|')) return make_token(TOKEN_OR);
-      return make_token(TOKEN_ERROR);
-    default:
-      scanner.current--;
-      break;
-  }
-
   const char *start_pos = scanner.current;
   Token t;
 
+  // 1. identifier
   t = run_dfa(&identifier, 0);
   if (t.type != TOKEN_ERROR) {
     t.type = check_keyword(t.start, t.length);
     return t;
   }
   
+  // 2. Literal Strings
+  scanner.current = start_pos;
+  t = run_dfa(&stringLiteral, 0);
+  if (t.type != TOKEN_ERROR) return t;
+  
+  // 3. Literal chars
+  scanner.current = start_pos;
+  t = run_dfa(&charLiteral, 0);
+  if (t.type != TOKEN_ERROR) return t;
+  
+  // 4. Number
   scanner.current = start_pos;
   t = run_dfa(&number, 0);
   if (t.type != TOKEN_ERROR) return t;
 
+  // 5. Operators Lenght 3
   scanner.current = start_pos;
+  t = run_dfa(&opLenght3, 0);
+  if (t.type != TOKEN_ERROR) return t;
+
+  // 6. Operators Lenght 2
+  scanner.current = start_pos;
+  t = run_dfa(&opLenght2, 0);
+  if (t.type != TOKEN_ERROR) return t;
+
+  // 7. Operators Lenght 1
+  scanner.current = start_pos;
+  t = run_dfa(&opLenght1, 0);
+  if (t.type != TOKEN_ERROR) return t;
+
   scanner.current++;
   return make_token(TOKEN_ERROR);
 }
@@ -185,6 +151,13 @@ static Token run_dfa(const Dfa *dfa, i32 start) {
 
         case ACTION_REJECT:
           return make_token(TOKEN_ERROR);
+
+        case ACTION_ANY:
+          if(c != '\0'){
+            scanner.current++;
+            state = s.next_state;
+            goto next;
+          }
       }
     }
     return make_token(TOKEN_ERROR);

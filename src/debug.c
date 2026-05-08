@@ -26,6 +26,7 @@ static const char* const token_names[] = {
   [TOKEN_TYPEDEF]  = "TYPEDEF",  [TOKEN_UNION]    = "UNION",
   [TOKEN_UNSIGNED] = "UNSIGNED", [TOKEN_VOID]     = "VOID",
   [TOKEN_VOLATILE] = "VOLATILE", [TOKEN_WHILE]    = "WHILE",
+  [TOKEN_INCLUDE] = "INCLUDE",
   [TOKEN_LEFT_PAREN]    = "LEFT_PAREN",    [TOKEN_RIGHT_PAREN]   = "RIGHT_PAREN",
   [TOKEN_LEFT_BRACE]    = "LEFT_BRACE",    [TOKEN_RIGHT_BRACE]   = "RIGHT_BRACE",
   [TOKEN_LEFT_BRACKET]  = "LEFT_BRACKET",  [TOKEN_RIGHT_BRACKET] = "RIGHT_BRACKET",
@@ -43,8 +44,16 @@ static const char* const token_names[] = {
   [TOKEN_LESS_EQUAL]    = "LESS_EQUAL",    [TOKEN_LESS]          = "LESS",
   [TOKEN_GREATER_EQUAL] = "GREATER_EQUAL", [TOKEN_GREATER]       = "GREATER",
   [TOKEN_AND]           = "AND",           [TOKEN_OR]            = "OR",
+  [TOKEN_TAG]           = "TAG",
+  [TOKEN_MEMBER]        = "MEMBER",
+  [TOKEN_LSE]           = "LSE",           [TOKEN_RSE]           = "RSE",
+  [TOKEN_AND_BITW_EQUAL]= "AND_BITW_EQUAL",[TOKEN_OR_BITW_EQUAL] = "OR_BITW_EQUAL",
+  [TOKEN_XOR_BITW_EQUAL]= "XOR_BITW_EQUAL",
+  [TOKEN_AND_BITW]      = "AND_BITW",      [TOKEN_OR_BITW]       = "OR_BITW",
+  [TOKEN_NOT_BITW]      = "NOT_BITW",      [TOKEN_XOR_BITW]      = "XOR_BITW",
+  [TOKEN_LEFT_SHIFT]    = "LEFT_SHIFT",    [TOKEN_RIGHT_SHIFT]   = "RIGHT_SHIFT",
+  [TOKEN_LIB]           = "LIB",
 };
-
 const char* token_type_name(TokenType type) {
   return token_names[type];
 }

@@ -14,6 +14,23 @@ int main(void) {
       printf("Indice %d: sumando %d (Subtotal: %d)\n", i, numeros[i], suma);
   }
 
+  // Una comparacion simple
+  if(a >= b){
+    a = '\\';
+  } else {
+
+  }
+  
+  do{
+    // Bucle do while
+
+  } while(c != 2);
+
+  // Tambien puedes hacer operaciones a nivel BitWise
+
+  a <<= 1;
+  b ^= a | b;
+
   /* 3. Salida final */
   printf("--------------------------------------\n");
   printf("La suma total es: %d\n", suma);
