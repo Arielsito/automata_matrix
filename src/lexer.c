@@ -15,7 +15,6 @@ Scanner scanner;
 static Token make_token(TokenType);
 static Token run_dfa(const Dfa*, i32);
 static void skip_whitespace();
-static i8 match(char);
 static u64 hash(const char*, i32);
 static void add_keyword(const char*, TokenType);
 static TokenType check_keyword(const char*, i32);
@@ -214,9 +213,9 @@ static void skip_whitespace() {
   }
 }
 
-static i8 match(char expected) {
-  if (*scanner.current == '\0') return 0;
-  if (*scanner.current != expected) return 0;
-  scanner.current++;
-  return 1;
-}
+// static i8 match(char expected) {
+//   if (*scanner.current == '\0') return 0;
+//   if (*scanner.current != expected) return 0;
+//   scanner.current++;
+//   return 1;
+// }

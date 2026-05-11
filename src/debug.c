@@ -52,7 +52,7 @@ static const char* const token_names[] = {
   [TOKEN_AND_BITW]      = "AND_BITW",      [TOKEN_OR_BITW]       = "OR_BITW",
   [TOKEN_NOT_BITW]      = "NOT_BITW",      [TOKEN_XOR_BITW]      = "XOR_BITW",
   [TOKEN_LEFT_SHIFT]    = "LEFT_SHIFT",    [TOKEN_RIGHT_SHIFT]   = "RIGHT_SHIFT",
-  [TOKEN_LIB]           = "LIB",
+  // [TOKEN_LIB]           = "LIB",
 };
 const char* token_type_name(TokenType type) {
   return token_names[type];
