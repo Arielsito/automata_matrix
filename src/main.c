@@ -1,17 +1,8 @@
 #include "../include/lexer.h"
-#include "../include/debug.h"
+#include "../include/parser.h"
+// #include "../include/debug.h"
 #include <stdio.h>
 #include <stdlib.h>
-
-static void parse_tokens(const char *source) {
-  init_lexer();
-  init_scan(source);
-  for (;;) {
-    Token t = scan_token();
-    printf("[%-15s] | Line: %d | Length: %d | Lexeme: '%.*s'\n", token_type_name(t.type), t.line, t.length, t.length, t.start);
-    if (t.type == TOKEN_EOF) break;
-  }
-}
 
 static void eval_expression() {
   char buff[1024];
@@ -21,7 +12,7 @@ static void eval_expression() {
       printf("\n");
       break;
     }
-    parse_tokens(buff);
+    compile(buff);
   }
 }
 
@@ -51,8 +42,9 @@ static char *readFile(const char* path) {
 
 static void runFile(const char *path) {
   char *source = readFile(path);
-  parse_tokens(source);
+  bool success = compile(source);
   free(source);
+  if (!success) exit(65);
 }
 
 int main(i32 argc, char *argv[]) {
