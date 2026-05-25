@@ -82,8 +82,8 @@ static ParseRule rules[] = {
   [TOKEN_GREATER] = { NULL, binary, PREC_COMPARE },
   [TOKEN_GREATER_EQUAL] = { NULL, binary, PREC_COMPARE },
 
-  [TOKEN_AND_BITW] = { NULL, binary, PREC_AND },
-  [TOKEN_OR_BITW] = { NULL, binary, PREC_OR },
+  [TOKEN_AND] = { NULL, binary, PREC_AND },
+  [TOKEN_OR] = { NULL, binary, PREC_OR },
 };
 
 static ParseRule *get_rule(TokenType t) {
