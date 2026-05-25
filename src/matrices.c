@@ -186,16 +186,16 @@ const State opLenght2_dfa[][13] = {
     {ACTION_ACCEPT, .payload.token_type = TOKEN_XOR_BITW_EQUAL, -1}
   },
   [26] = {
-    {ACTION_NONE, .payload.c = '=', 27}, {ACTION_ACCEPT, .payload.token_type = TOKEN_MUL, -1}
+    {ACTION_NONE, .payload.c = '=', 27}, {ACTION_ACCEPT, .payload.token_type = TOKEN_STAR, -1}
   },
   [27] = {
-    {ACTION_ACCEPT, .payload.token_type = TOKEN_MUL_EQUAL, -1}
+    {ACTION_ACCEPT, .payload.token_type = TOKEN_STAR_EQUAL, -1}
   },
   [28] = {
-    {ACTION_NONE, .payload.c = '=', 29}, {ACTION_ACCEPT, .payload.token_type = TOKEN_DIV, -1}
+    {ACTION_NONE, .payload.c = '=', 29}, {ACTION_ACCEPT, .payload.token_type = TOKEN_SLASH, -1}
   },
   [29] = {
-    {ACTION_ACCEPT, .payload.token_type = TOKEN_DIV_EQUAL, -1}
+    {ACTION_ACCEPT, .payload.token_type = TOKEN_SLASH_EQUAL, -1}
   },
   [30] = {
     {ACTION_NONE, .payload.c = '=', 31}, {ACTION_ACCEPT, .payload.token_type = TOKEN_MOD, -1}
