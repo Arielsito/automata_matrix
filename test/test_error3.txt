@@ -1,0 +1,23 @@
+if (limite >= 100) {
+    base = 8 + b * 6 - d / e;
+    if (base == 110) {
+        estado = !activo;
+    }
+}
+
+base = a + 4 * 2
+
+if (activo && 1) {
+    a = b + * 6;
+}
+
+if (base > 5) {
+    8 = limite;
+} else {
+    base = -limite;
+}
+
+if (limite < 200
+{
+    estado = 0;
+}

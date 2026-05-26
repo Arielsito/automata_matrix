@@ -95,6 +95,7 @@ typedef struct parser {
   Token previous;
   bool hadError;
   bool panicMode;
+  const char* source;
 } Parser;
 
 static Parser parser;
@@ -102,7 +103,9 @@ static Parser parser;
 static void advance();
 static void consume(TokenType, const char*);
 static bool match(TokenType);
+static void error_at(Token*, const char*);
 static void error_at_current(const char*);
+static void error_at_previous(const char*);
 static void sync();
 
 bool compile(const char* source) {
@@ -110,6 +113,7 @@ bool compile(const char* source) {
   init_scan(source);
   parser.hadError = false;
   parser.panicMode = false;
+  parser.source = source;
 
   advance();
 
@@ -133,25 +137,82 @@ static void advance() {
   }
 }
 
+static const char* token_type_to_string(TokenType type) {
+  switch (type) {
+    case TOKEN_LEFT_PAREN: return "'('";
+    case TOKEN_RIGHT_PAREN: return "')'";
+    case TOKEN_LEFT_BRACE: return "'{'";
+    case TOKEN_RIGHT_BRACE: return "'}'";
+    case TOKEN_SEMICOLON: return "';'";
+    case TOKEN_EOF: return "end of file";
+    default: return "token";
+  }
+}
+
+static void error_at(Token* token, const char* message) {
+  if (parser.panicMode) return;
+  parser.panicMode = true;
+  parser.hadError = true;
+  fprintf(stderr, "Error at line %d", token->line);
+  if (token->type == TOKEN_EOF) {
+    fprintf(stderr, " at end of file");
+  } else if (token->type != TOKEN_ERROR) {
+    fprintf(stderr, " at '%.*s'", token->length, token->start);
+  }
+  fprintf(stderr, ": %s\n", message);
+
+  if (token->type != TOKEN_EOF && token->type != TOKEN_ERROR) {
+    const char* line_start = token->start;
+    while (line_start > parser.source && *(line_start - 1) != '\n') {
+      line_start--;
+    }
+
+    const char* line_end = token->start;
+    while (*line_end != '\n' && *line_end != '\0') {
+      line_end++;
+    }
+
+    int line_length = (int)(line_end - line_start);
+    fprintf(stderr, "    %.*s\n", line_length, line_start);
+
+    fprintf(stderr, "    "); 
+    for (const char* p = line_start; p < token->start; p++) {
+      if (*p == '\t') {
+        fprintf(stderr, "\t");
+      } else {
+        fprintf(stderr, " ");
+      }
+    }
+
+    fprintf(stderr, "^\n");
+  }
+}
+static void error_at_current(const char* message) {
+  error_at(&parser.current, message);
+}
+
+static void error_at_previous(const char* message) {
+  error_at(&parser.previous, message);
+}
+
 static void consume(TokenType type, const char* message) {
   if (parser.current.type == type) {
     advance();
     return;
   }
-  error_at_current(message);
+  char dynamic_message[256];
+  if (parser.current.type == TOKEN_EOF) {
+    snprintf(dynamic_message, sizeof(dynamic_message), "%s Expected %s but found end of file.", message, token_type_to_string(type));
+  } else {
+    snprintf(dynamic_message, sizeof(dynamic_message), "%s Expected %s but found '%.*s'.", message, token_type_to_string(type), parser.current.length, parser.current.start);
+  }
+  error_at_current(dynamic_message);
 }
 
 static bool match(TokenType type) {
   if (parser.current.type != type) return false;
   advance();
   return true;
-}
-
-static void error_at_current(const char* message) {
-  if (parser.panicMode) return;
-  parser.panicMode = true;
-  parser.hadError = true;
-  fprintf(stderr, "Error at line %d: %s\n", parser.current.line, message);
 }
 
 static void sync() {
@@ -227,7 +288,7 @@ static AstNode* parse_presedence(Presedence p) {
   advance();
   PrefixFn prefix = get_rule(parser.previous.type)->prefix;
   if (!prefix) {
-    error_at_current("expected expression");
+    error_at_previous("expected expression");
     return NULL;
   }
 
@@ -323,7 +384,7 @@ static AstNode* assign(AstNode* target) {
   TokenType op = parser.previous.type;
   AstNode* val = parse_expression();
   if (target->type != NODE_VARIABLE) {
-    error_at_current("Objective of assignment invalid.");
+    error_at_previous("Objective of assignment invalid.");
     return target;
   }
 
