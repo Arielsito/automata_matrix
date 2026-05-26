@@ -1,0 +1,7 @@
+if (limite >= 100) {
+  base += limite + 5 * 2;
+  if (base == 110) {
+    estado = !activo;
+  }
+} else 
+  base = -limite;

@@ -1,4 +1,3 @@
-#include "../include/lexer.h"
 #include "../include/parser.h"
 // #include "../include/debug.h"
 #include <stdio.h>
@@ -45,6 +44,7 @@ static void runFile(const char *path) {
   bool success = compile(source);
   free(source);
   if (!success) exit(65);
+  else printf("Success\n");
 }
 
 int main(i32 argc, char *argv[]) {
