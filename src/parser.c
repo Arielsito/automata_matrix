@@ -246,7 +246,7 @@ static AstNode* parse_statement() {
 
 static AstNode* parse_expression_stmt() {
   AstNode *expr = parse_expression();
-  consume(TOKEN_SEMICOLON, "Expected ';' at the end of instruction.");
+  consume(TOKEN_SEMICOLON, "Parser: Expected ';' at the end of instruction.");
   i32 line = (expr != NULL) ? expr->line : parser.previous.line;
   AstNode* stmt = make_node(NODE_STATEMENT, line);
   stmt->as.statement.expression = expr;
@@ -266,15 +266,15 @@ static AstNode* parse_block() {
     }
     n->as.block.statements[n->as.block.count++] = parse_statement();
   }
-  consume(TOKEN_RIGHT_BRACE, "Expected '}' at the end of the block.");
+  consume(TOKEN_RIGHT_BRACE, "Parser: Expected '}' at the end of the block.");
   return n;
 }
 
 static AstNode* parse_if() {
   i32 line = parser.previous.line;
-  consume(TOKEN_LEFT_PAREN, "Expected '(' after 'if'.");
+  consume(TOKEN_LEFT_PAREN, "Parser: Expected '(' after 'if'.");
   AstNode *condition = parse_expression();
-  consume(TOKEN_RIGHT_PAREN, "Expected ')' after expression.");
+  consume(TOKEN_RIGHT_PAREN, "Parser: Expected ')' after expression.");
   AstNode *then_branch = parse_statement();
   AstNode* else_branch = NULL;
   if (match(TOKEN_ELSE)) else_branch = parse_statement();
@@ -291,7 +291,7 @@ static AstNode* parse_presedence(Presedence p) {
   advance();
   PrefixFn prefix = get_rule(parser.previous.type)->prefix;
   if (!prefix) {
-    error_at_previous("expected expression");
+    error_at_previous("Parser: expected expression");
     return NULL;
   }
 
@@ -360,7 +360,7 @@ static AstNode* variable() {
 
 static AstNode* grouping() {
   AstNode *expr = parse_expression();
-  consume(TOKEN_RIGHT_PAREN, "Expected ')' after expression.\n");
+  consume(TOKEN_RIGHT_PAREN, "Parser: Expected ')' after expression.\n");
   return expr;
 }
 
@@ -394,7 +394,7 @@ static AstNode* assign(AstNode* target) {
   i32 line = parser.previous.line;
   TokenType op = parser.previous.type;
   if (target->type != NODE_VARIABLE) {
-    error_at_previous("Objective of assignment invalid.");
+    error_at_previous("Parser: Objective of assignment invalid.");
     return NULL;
   }
 
