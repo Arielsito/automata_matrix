@@ -41,6 +41,7 @@ static AstNode* make_node(NodeType type, i32 line) {
 static AstNode* parse_statement();
 static AstNode* parse_block();
 static AstNode* parse_if();
+static AstNode* parse_while();
 static AstNode* parse_expression_stmt();
 
 // pratt parser for math expressions
@@ -241,6 +242,7 @@ static void sync() {
 static AstNode* parse_statement() {
   if (match(TOKEN_IF)) return parse_if();
   if (match(TOKEN_LEFT_BRACE)) return parse_block();
+  if (match(TOKEN_WHILE)) return parse_while();
 
   return parse_expression_stmt();
 }
@@ -291,6 +293,18 @@ static AstNode* parse_if() {
   n->as.if_stmt.condition = condition;
   n->as.if_stmt.thenBranch = then_branch;
   n->as.if_stmt.elseBranch = else_branch;
+  return n;
+}
+
+static AstNode* parse_while() {
+  i32 line = parser.previous.line;
+  consume(TOKEN_LEFT_PAREN, "Parser: Expected '(' after 'while'.");
+  AstNode *condition = parse_expression();
+  consume(TOKEN_RIGHT_PAREN, "Parser: Expected ')' after expression.");
+  AstNode *body = parse_statement();
+  AstNode *n = make_node(NODE_WHILE, line);
+  n->as.while_stmt.condition = condition;
+  n->as.while_stmt.body = body;
   return n;
 }
 

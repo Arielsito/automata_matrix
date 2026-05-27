@@ -5,3 +5,7 @@ if (limite >= 100) {
   }
 } else 
   base = -limite;
+
+while (a < b) {
+  a += b;
+}

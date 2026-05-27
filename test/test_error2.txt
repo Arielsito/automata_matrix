@@ -1,12 +1,14 @@
-//2 = 4 % (base) + 4 * 2 - 2;
-//base = 42232#3 % (base) + 4 * 2 - 2;
-100 = base + (4 * 2) - 5;
-base = a + * 5 + 10;
+x = 4 % (base) + 4 * 2 - 2;
+base = 422323 % (base) + 4 * 2 - 2;
+y = base + (4 * 2) - 5;
+base = a + 2 * 5 + 10;
 
-if(2 + 2)
+if(a + 2 * b + c > c + 1 && base % 2) {
+
   a = 2;
   b = 4;
 
+}
 else {
   // Algo de codigo aqui
 }

@@ -2,8 +2,8 @@ if (!~(activo || 0) && (limite * 2.5 <= (base += (a - (3 / (d == (e && (f < -5.0
     base %= 2;
 }
 
-base = ((a + (b * ~(c % (d <= (e == (f && !(g || (h / (i + (j * (k - (l / 2))))))))))));
+base = ((a + (b * ~(c % (d <= (e == (f && !(g || (h / (i + (j * (k - (l / 2)))))))))))));
 
 if (limite == 100) {
-    resultado = (((a + b) * (c - d)) / ~(e % (f <= (g != (h && !(i || (j += 2.0 * k))))));
+    resultado = (((a + b) * (c - d)) / ~(e % (f <= (g != (h && !(i || (j += 2.0 * k)))))));
 }

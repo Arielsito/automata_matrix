@@ -13,6 +13,7 @@ typedef enum nodetype {
   NODE_STATEMENT,
   NODE_IF,
   NODE_BLOCK,
+  NODE_WHILE,
 } NodeType;
 
 typedef struct AstNode AstNode;
@@ -67,6 +68,11 @@ struct AstNode {
       i32 count;
       i32 capacity;
     } block;
+
+    struct {
+      AstNode* condition;
+      AstNode* body;
+    } while_stmt;
   } as;
 };
 
