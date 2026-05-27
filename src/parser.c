@@ -130,9 +130,12 @@ static void advance() {
     parser.current = scan_token();
     if (parser.current.type != TOKEN_ERROR) break;
     if (!parser.panicMode) {
-      fprintf(stderr, "Error at line %d: %.*s\n", parser.current.line, parser.current.length, parser.current.start);
-      parser.hadError = true;
-      parser.panicMode = true;
+      char lexer_msg[128];
+      snprintf(lexer_msg, sizeof(lexer_msg), "Lexer: Invalid character."); 
+      error_at_current(lexer_msg);
+      //fprintf(stderr, "Error at line %d: %.*s\n", parser.current.line, parser.current.length, parser.current.start);
+      //parser.hadError = true;
+      //parser.panicMode = true;
     }
   }
 }
@@ -156,12 +159,12 @@ static void error_at(Token* token, const char* message) {
   fprintf(stderr, "Error at line %d", token->line);
   if (token->type == TOKEN_EOF) {
     fprintf(stderr, " at end of file");
-  } else if (token->type != TOKEN_ERROR) {
+  } else {
     fprintf(stderr, " at '%.*s'", token->length, token->start);
   }
   fprintf(stderr, ": %s\n", message);
 
-  if (token->type != TOKEN_EOF && token->type != TOKEN_ERROR) {
+  if (token->type != TOKEN_EOF) {
     const char* line_start = token->start;
     while (line_start > parser.source && *(line_start - 1) != '\n') {
       line_start--;
@@ -202,9 +205,9 @@ static void consume(TokenType type, const char* message) {
   }
   char dynamic_message[256];
   if (parser.current.type == TOKEN_EOF) {
-    snprintf(dynamic_message, sizeof(dynamic_message), "%s Expected %s but found end of file.", message, token_type_to_string(type));
+      snprintf(dynamic_message, sizeof(dynamic_message), "%s (Found end of file)", message);
   } else {
-    snprintf(dynamic_message, sizeof(dynamic_message), "%s Expected %s but found '%.*s'.", message, token_type_to_string(type), parser.current.length, parser.current.start);
+      snprintf(dynamic_message, sizeof(dynamic_message), "%s (Found '%.*s')", message, parser.current.length, parser.current.start);
   }
   error_at_current(dynamic_message);
 }
@@ -293,10 +296,15 @@ static AstNode* parse_presedence(Presedence p) {
   }
 
   AstNode* left = prefix();
+
+  if (parser.panicMode) return left;
+
   while (p <= get_rule(parser.current.type)->p) {
     advance();
     InfixFn infix = get_rule(parser.previous.type)->infix;
     left = infix(left);
+
+    if (parser.panicMode) return left;
   }
   return left;
 }
@@ -372,6 +380,9 @@ static AstNode* binary(AstNode* left) {
   ParseRule* rule = get_rule(op);
 
   AstNode* right = parse_presedence((Presedence)(rule->p + 1));
+
+  if (parser.panicMode || right == NULL) return NULL;
+
   AstNode *n = make_node(NODE_BINARY, line);
   n->as.binary.left = left;
   n->as.binary.op = op;
@@ -382,11 +393,13 @@ static AstNode* binary(AstNode* left) {
 static AstNode* assign(AstNode* target) {
   i32 line = parser.previous.line;
   TokenType op = parser.previous.type;
-  AstNode* val = parse_expression();
   if (target->type != NODE_VARIABLE) {
     error_at_previous("Objective of assignment invalid.");
-    return target;
+    return NULL;
   }
+
+  AstNode* val = parse_expression();
+  if (parser.panicMode || val == NULL) return NULL;
 
   AstNode *n = make_node(NODE_ASSIGN, line);
   n->as.assign.target = target->as.variable.name;
