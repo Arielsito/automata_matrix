@@ -5,10 +5,15 @@ if (limite >= 100) {
     }
 }
 
-base = a + 4 * 2
-
 if (activo && 1) {
     a = b + * 6;
+    2 = @a + 4@ *@ 2@@@@@@@
+    if(2)
+        pepe;
+        //juan;
+    else{
+      // some code
+    }
 }
 
 if (base > 5) {
@@ -17,7 +22,3 @@ if (base > 5) {
     base = -limite;
 }
 
-if (limite < 200
-{
-    estado = 0;
-}

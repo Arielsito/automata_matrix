@@ -118,6 +118,7 @@ bool compile(const char* source) {
   advance();
 
   while (!match(TOKEN_EOF)) {
+    parser.panicMode = false;
     parse_statement();
     if (parser.panicMode) sync();
   }
@@ -260,12 +261,20 @@ static AstNode* parse_block() {
   n->as.block.count = 0;
 
   while (parser.current.type != TOKEN_RIGHT_BRACE && parser.current.type != TOKEN_EOF) {
-    if (n->as.block.count == capacity) {
-      capacity *= 2;
-      n->as.block.statements = realloc(n->as.block.statements, sizeof(AstNode*) * capacity);
+    AstNode* stmt = parse_statement();
+    if (parser.panicMode) {
+      sync();
+      parser.panicMode = false;
     }
-    n->as.block.statements[n->as.block.count++] = parse_statement();
+    if (stmt != NULL) {
+      if (n->as.block.count == capacity) {
+        capacity *= 2;
+        n->as.block.statements = realloc(n->as.block.statements, sizeof(AstNode*) * capacity);
+      }
+      n->as.block.statements[n->as.block.count++] = stmt;
+    }
   }
+
   consume(TOKEN_RIGHT_BRACE, "Parser: Expected '}' at the end of the block.");
   return n;
 }
