@@ -310,6 +310,10 @@ static AstNode* parse_while() {
 
 // pratt functions
 
+static AstNode* parse_expression() {
+  return parse_presedence(PREC_ASSIGN);
+}
+
 static AstNode* parse_presedence(Presedence p) {
   advance();
   PrefixFn prefix = get_rule(parser.previous.type)->prefix;
@@ -330,10 +334,6 @@ static AstNode* parse_presedence(Presedence p) {
     if (parser.panicMode) return left;
   }
   return left;
-}
-
-static AstNode* parse_expression() {
-  return parse_presedence(PREC_ASSIGN);
 }
 
 static AstNode* number() {
