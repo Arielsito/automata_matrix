@@ -11,7 +11,9 @@ static void eval_expression() {
       printf("\n");
       break;
     }
-    compile(buff);
+    bool success = compile(buff);
+    if (!success) exit(65);
+    else printf("Success\n");
   }
 }
 
