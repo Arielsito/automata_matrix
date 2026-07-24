@@ -13,4 +13,5 @@ add_executable(main
   src/matrices.c
   src/debug.c
   src/parser.c
+  src/arena.c
 )

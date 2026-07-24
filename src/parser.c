@@ -1,8 +1,9 @@
 #include "../include/common.h"
 #include "../include/lexer.h"
 #include <stdio.h>
-#include <stdlib.h>
+#include <string.h>
 #include "../include/parser.h"
+#include "../include/arena.h"
 
 // presedence
 typedef enum presedence {
@@ -30,8 +31,9 @@ typedef struct {
 } ParseRule;
 
 // AST functions
-static AstNode* make_node(NodeType type, i32 line) {
-  AstNode* n = malloc(sizeof(AstNode));
+static AstNode* make_node(Arena *arena, NodeType type, i32 line) {
+  AstNode* n = PUSH_STRUCT(arena, AstNode);
+  // AstNode* n = malloc(sizeof(AstNode));
   n->type = type;
   n->line = line;
   return n;
@@ -100,6 +102,7 @@ typedef struct parser {
 } Parser;
 
 static Parser parser;
+Arena *perm_arena; 
 
 static void advance();
 static void consume(TokenType, const char*);
@@ -112,6 +115,7 @@ static void sync();
 bool compile(const char* source) {
   init_lexer();
   init_scan(source);
+  perm_arena = arena_create(GiB(1));
   parser.hadError = false;
   parser.panicMode = false;
   parser.source = source;
@@ -123,7 +127,10 @@ bool compile(const char* source) {
     parse_statement();
     if (parser.panicMode) sync();
   }
-  return !parser.hadError;
+  bool result = !parser.hadError;
+  arena_destroy(perm_arena);
+  perm_arena = NULL;
+  return result;
 }
 
 static void advance() {
@@ -251,15 +258,16 @@ static AstNode* parse_expression_stmt() {
   AstNode *expr = parse_expression();
   consume(TOKEN_SEMICOLON, "Parser: Expected ';' at the end of instruction.");
   i32 line = (expr != NULL) ? expr->line : parser.previous.line;
-  AstNode* stmt = make_node(NODE_STATEMENT, line);
+  AstNode* stmt = make_node(perm_arena, NODE_STATEMENT, line);
   stmt->as.statement.expression = expr;
   return stmt;
 }
 
 static AstNode* parse_block() {
-  AstNode *n = make_node(NODE_BLOCK, parser.previous.line);
-  i32 capacity = 8;
-  n->as.block.statements = malloc(sizeof(AstNode*) * capacity);
+  AstNode *n = make_node(perm_arena, NODE_BLOCK, parser.previous.line);
+  // i32 capacity = 8;
+  // n->as.block.statements = malloc(sizeof(AstNode*) * capacity);
+  n->as.block.statements = PUSH_ARRAY(perm_arena, AstNode*, 64);
   n->as.block.count = 0;
 
   while (parser.current.type != TOKEN_RIGHT_BRACE && parser.current.type != TOKEN_EOF) {
@@ -269,10 +277,10 @@ static AstNode* parse_block() {
       parser.panicMode = false;
     }
     if (stmt != NULL) {
-      if (n->as.block.count == capacity) {
-        capacity *= 2;
-        n->as.block.statements = realloc(n->as.block.statements, sizeof(AstNode*) * capacity);
-      }
+      // if (n->as.block.count == capacity) {
+      //   capacity *= 2;
+      //   n->as.block.statements = realloc(n->as.block.statements, sizeof(AstNode*) * capacity);
+      // }
       n->as.block.statements[n->as.block.count++] = stmt;
     }
   }
@@ -289,7 +297,7 @@ static AstNode* parse_if() {
   AstNode *then_branch = parse_statement();
   AstNode* else_branch = NULL;
   if (match(TOKEN_ELSE)) else_branch = parse_statement();
-  AstNode *n = make_node(NODE_IF, line);
+  AstNode *n = make_node(perm_arena, NODE_IF, line);
   n->as.if_stmt.condition = condition;
   n->as.if_stmt.thenBranch = then_branch;
   n->as.if_stmt.elseBranch = else_branch;
@@ -302,7 +310,7 @@ static AstNode* parse_while() {
   AstNode *condition = parse_expression();
   consume(TOKEN_RIGHT_PAREN, "Parser: Expected ')' after expression.");
   AstNode *body = parse_statement();
-  AstNode *n = make_node(NODE_WHILE, line);
+  AstNode *n = make_node(perm_arena, NODE_WHILE, line);
   n->as.while_stmt.condition = condition;
   n->as.while_stmt.body = body;
   return n;
@@ -337,7 +345,7 @@ static AstNode* parse_presedence(Presedence p) {
 }
 
 static AstNode* number() {
-  AstNode* n = make_node(NODE_LITERAL, parser.previous.line);
+  AstNode* n = make_node(perm_arena, NODE_LITERAL, parser.previous.line);
   if (parser.previous.type == TOKEN_INTEGER_LITERAL) {
     i32 val = 0;
     for (i32 i = 0; i < parser.previous.length; i++) {
@@ -372,12 +380,19 @@ static AstNode* number() {
 }
 
 static AstNode* variable() {
-  AstNode* n = make_node(NODE_VARIABLE, parser.previous.line);
+  AstNode* n = make_node(perm_arena, NODE_VARIABLE, parser.previous.line);
   i32 len = parser.previous.length;
-  n->as.variable.name = malloc(len + 1);
-  for (i32 i = 0; i < len; i++)
-    n->as.variable.name[i] = parser.previous.start[i];
-  n->as.variable.name[len] = '\0';
+
+  char *name = PUSH_ARRAY(perm_arena, char, len + 1);
+  memcpy(name, parser.previous.start, len);
+  name[len] = '\0';
+  n->as.variable.name = name;
+  
+  // n->as.variable.name = malloc(len + 1);
+  // for (i32 i = 0; i < len; i++)
+  //   n->as.variable.name[i] = parser.previous.start[i];
+  // n->as.variable.name[len] = '\0';
+
   return n;
 }
 
@@ -391,7 +406,7 @@ static AstNode* unary() {
   TokenType op = parser.previous.type;
   i32 line = parser.previous.line;
   AstNode* right = parse_presedence(PREC_UNARY);
-  AstNode* n = make_node(NODE_UNARY, line);
+  AstNode* n = make_node(perm_arena, NODE_UNARY, line);
   n->as.unary.op = op;
   n->as.unary.right = right;
   return n;
@@ -406,7 +421,7 @@ static AstNode* binary(AstNode* left) {
 
   if (parser.panicMode || right == NULL) return NULL;
 
-  AstNode *n = make_node(NODE_BINARY, line);
+  AstNode *n = make_node(perm_arena, NODE_BINARY, line);
   n->as.binary.left = left;
   n->as.binary.op = op;
   n->as.binary.right = right;
@@ -424,7 +439,7 @@ static AstNode* assign(AstNode* target) {
   AstNode* val = parse_expression();
   if (parser.panicMode || val == NULL) return NULL;
 
-  AstNode *n = make_node(NODE_ASSIGN, line);
+  AstNode *n = make_node(perm_arena, NODE_ASSIGN, line);
   n->as.assign.target = target->as.variable.name;
   n->as.assign.op = op;
   n->as.assign.value = val;
