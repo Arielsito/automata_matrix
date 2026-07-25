@@ -5,7 +5,7 @@ Arena *arena_create(u64 capacity) {
   Arena *arena = (Arena*)malloc(capacity);
 
   arena->capacity = capacity;
-  arena->commit_pos = ARENA_BASE_POS;
+  arena->pos = ARENA_BASE_POS;
   return arena;
 }
 
@@ -14,12 +14,12 @@ void arena_destroy(Arena *arena) {
 }
 
 void *arena_push(Arena *arena, u64 size, bool non_zero) {
-  u64 pos_aligned = ALIGN_UP_POW2(arena->commit_pos, ARENA_ALIGN);
+  u64 pos_aligned = ALIGN_UP_POW2(arena->pos, ARENA_ALIGN);
   u64 new_pos = pos_aligned + size;
 
   if (new_pos > arena->capacity) return NULL;
 
-  arena->commit_pos = new_pos;
+  arena->pos = new_pos;
 
   u8* out = (u8*)arena + pos_aligned;
 
@@ -29,12 +29,12 @@ void *arena_push(Arena *arena, u64 size, bool non_zero) {
 }
 
 void arena_pop(Arena *arena, u64 size) {
-  size = MIN(size, arena->commit_pos - ARENA_BASE_POS);
-  arena->commit_pos -= size;
+  size = MIN(size, arena->pos - ARENA_BASE_POS);
+  arena->pos -= size;
 }
 
 void arena_pop_to(Arena *arena, u64 pos) {
-  u64 size = pos < arena->commit_pos ? arena->commit_pos - pos : 0;
+  u64 size = pos < arena->pos ? arena->pos - pos : 0;
   arena_pop(arena, size);
 }
 

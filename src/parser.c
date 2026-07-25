@@ -115,7 +115,7 @@ static void sync();
 bool compile(const char* source) {
   init_lexer();
   init_scan(source);
-  perm_arena = arena_create(GiB(1));
+  perm_arena = arena_create(MiB(64));
   parser.hadError = false;
   parser.panicMode = false;
   parser.source = source;

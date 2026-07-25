@@ -15,10 +15,8 @@
 #define ARENA_ALIGN (sizeof(void*))
 
 typedef struct mem_arena {
-  u64 reserve_size;
-  u64 commit_size;
   u64 capacity;
-  u64 commit_pos;
+  u64 pos;
 } Arena;
 
 Arena *arena_create(u64);
