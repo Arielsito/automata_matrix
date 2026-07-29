@@ -42,8 +42,13 @@ static AstNode* make_node(Arena *arena, NodeType type, i32 line) {
 // parse functions
 static AstNode* parse_statement();
 static AstNode* parse_block();
+static AstNode* parse_return();
+static AstNode* parse_break();
+static AstNode* parse_continue();
 static AstNode* parse_if();
 static AstNode* parse_while();
+static AstNode* parse_do_while();
+static AstNode* parse_for();
 static AstNode* parse_expression_stmt();
 
 // pratt parser for math expressions
@@ -55,6 +60,7 @@ static AstNode* grouping();
 static AstNode* unary();
 static AstNode* binary(AstNode*);
 static AstNode* assign(AstNode*);
+static AstNode* postfix(AstNode*);
 
 static ParseRule rules[] = {
   [TOKEN_INTEGER_LITERAL] = { number, NULL, PREC_NONE },
@@ -78,6 +84,9 @@ static ParseRule rules[] = {
   [TOKEN_SLASH] = { NULL, binary, PREC_FACTOR },
   [TOKEN_MOD] = { NULL, binary, PREC_FACTOR },
 
+  [TOKEN_PLUS_PLUS] = { unary, postfix, PREC_UNARY },
+  [TOKEN_MINUS_MINUS] = { unary, postfix, PREC_UNARY },
+
   [TOKEN_EQUAL_EQUAL] = { NULL, binary, PREC_EQUAL },
   [TOKEN_NOT_EQUAL] = { NULL, binary, PREC_EQUAL },
   [TOKEN_LESS] = { NULL, binary, PREC_COMPARE },
@@ -87,6 +96,9 @@ static ParseRule rules[] = {
 
   [TOKEN_AND] = { NULL, binary, PREC_AND },
   [TOKEN_OR] = { NULL, binary, PREC_OR },
+
+  [TOKEN_EOF] = { NULL, NULL, PREC_NONE },
+  [TOKEN_ERROR] = { NULL, NULL, PREC_NONE },
 };
 
 static ParseRule *get_rule(TokenType t) {
@@ -247,9 +259,18 @@ static void sync() {
 // parse functions
 
 static AstNode* parse_statement() {
+  // NULL STATEMENTS
+  if (match(TOKEN_SEMICOLON))
+    return make_node(perm_arena, NODE_STATEMENT, parser.previous.line);
+
+  if (match(TOKEN_RETURN)) return parse_return();
+  if (match(TOKEN_BREAK)) return parse_break();
+  if (match(TOKEN_CONTINUE)) return parse_continue();
   if (match(TOKEN_IF)) return parse_if();
   if (match(TOKEN_LEFT_BRACE)) return parse_block();
   if (match(TOKEN_WHILE)) return parse_while();
+  if (match(TOKEN_DO)) return parse_do_while();
+  if (match(TOKEN_FOR)) return parse_for();
 
   return parse_expression_stmt();
 }
@@ -289,6 +310,30 @@ static AstNode* parse_block() {
   return n;
 }
 
+static AstNode* parse_return() {
+  i32 line = parser.previous.line;
+  AstNode *n = make_node(perm_arena, NODE_RETURN, line);
+  if (parser.current.type == TOKEN_SEMICOLON) // return ;
+    n->as.return_stmt.value = NULL;
+  else
+    n->as.return_stmt.value = parse_expression();
+
+  consume(TOKEN_SEMICOLON, "Parser: Expected ';' at the end of instruction.");
+  return n;
+}
+
+static AstNode* parse_break() {
+  i32 line = parser.previous.line;
+  consume(TOKEN_SEMICOLON, "Parser: Expected ';' at the end of instruction.");
+  return make_node(perm_arena, NODE_BREAK, line);
+}
+
+static AstNode* parse_continue() {
+  i32 line = parser.previous.line;
+  consume(TOKEN_SEMICOLON, "Parser: Expected ';' at the end of instruction.");
+  return make_node(perm_arena, NODE_CONTINUE, line);
+}
+
 static AstNode* parse_if() {
   i32 line = parser.previous.line;
   consume(TOKEN_LEFT_PAREN, "Parser: Expected '(' after 'if'.");
@@ -316,6 +361,51 @@ static AstNode* parse_while() {
   return n;
 }
 
+static AstNode* parse_do_while() {
+  i32 line = parser.previous.line;
+  AstNode *body = parse_statement();
+  consume(TOKEN_WHILE, "Parser: Expected 'while' after statement.");
+  consume(TOKEN_LEFT_PAREN, "Parser: Expected '(' after 'while'.");
+  AstNode *condition = parse_expression();
+  consume(TOKEN_RIGHT_PAREN, "Parser: Expected ')' after expression.");
+  consume(TOKEN_SEMICOLON, "Parser: Expected ';' at the end of instruction.");
+  AstNode *n = make_node(perm_arena, NODE_DO_WHILE, line);
+  n->as.while_stmt.body = body;
+  n->as.while_stmt.condition = condition;
+  return n;
+}
+
+static AstNode* parse_for() {
+  i32 line = parser.previous.line;
+  consume(TOKEN_LEFT_PAREN, "Parser: Expected '(' after 'for'.");
+
+  // for(;;) -> expressions are optional
+  AstNode *init = NULL;
+  if (parser.current.type != TOKEN_SEMICOLON)
+    init = parse_expression_stmt();
+  else
+    advance();
+
+  AstNode *condition = NULL;
+  if (parser.current.type != TOKEN_SEMICOLON)
+    condition = parse_expression();
+  consume(TOKEN_SEMICOLON, "Parser: Expected ';' after for condition.");
+
+
+  AstNode *update = NULL;
+  if (parser.current.type != TOKEN_RIGHT_PAREN)
+    update = parse_expression();
+
+  consume(TOKEN_RIGHT_PAREN, "Parser: Expected ')' after expression.");
+  AstNode *body = parse_statement();
+  AstNode *n = make_node(perm_arena, NODE_FOR, line);
+  n->as.for_stmt.init = init;
+  n->as.for_stmt.condition = condition;
+  n->as.for_stmt.update = update;
+  n->as.for_stmt.body = body;
+  return n;
+}
+
 // pratt functions
 
 static AstNode* parse_expression() {
@@ -326,7 +416,7 @@ static AstNode* parse_presedence(Presedence p) {
   advance();
   PrefixFn prefix = get_rule(parser.previous.type)->prefix;
   if (!prefix) {
-    error_at_previous("Parser: expected expression");
+    error_at_previous("Parser: expected expression.");
     return NULL;
   }
 
@@ -337,8 +427,12 @@ static AstNode* parse_presedence(Presedence p) {
   while (p <= get_rule(parser.current.type)->p) {
     advance();
     InfixFn infix = get_rule(parser.previous.type)->infix;
-    left = infix(left);
+    if (!infix) {
+      error_at_previous("Parser: unexpected token in expression.");
+      return left;
+    }
 
+    left = infix(left);
     if (parser.panicMode) return left;
   }
   return left;
@@ -419,7 +513,7 @@ static AstNode* binary(AstNode* left) {
 
   AstNode* right = parse_presedence((Presedence)(rule->p + 1));
 
-  if (parser.panicMode || right == NULL) return NULL;
+  if (parser.panicMode || right == NULL || left == NULL) return NULL;
 
   AstNode *n = make_node(perm_arena, NODE_BINARY, line);
   n->as.binary.left = left;
@@ -443,5 +537,15 @@ static AstNode* assign(AstNode* target) {
   n->as.assign.target = target->as.variable.name;
   n->as.assign.op = op;
   n->as.assign.value = val;
+  return n;
+}
+
+static AstNode* postfix(AstNode* left) {
+  if (left == NULL) return NULL;
+  i32 line = parser.previous.line;
+  TokenType op = parser.previous.type;
+  AstNode *n = make_node(perm_arena, NODE_UNARY, line);
+  n->as.unary.op = op;
+  n->as.unary.right = left;
   return n;
 }

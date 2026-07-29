@@ -11,9 +11,15 @@ typedef enum nodetype {
   NODE_BINARY,
   NODE_UNARY,
   NODE_STATEMENT,
+  // non pratt nodes
+  NODE_RETURN,
+  NODE_BREAK,
+  NODE_CONTINUE,
   NODE_IF,
   NODE_BLOCK,
   NODE_WHILE,
+  NODE_DO_WHILE,
+  NODE_FOR,
 } NodeType;
 
 typedef struct AstNode AstNode;
@@ -51,11 +57,16 @@ struct AstNode {
     struct {
       TokenType op;
       AstNode* right;
+      bool postfix;
     } unary;
 
     struct {
       AstNode* expression;
     } statement;
+
+    struct {
+      AstNode* value;
+    } return_stmt;
 
     struct {
       AstNode* condition;
@@ -73,6 +84,13 @@ struct AstNode {
       AstNode* condition;
       AstNode* body;
     } while_stmt;
+
+    struct {
+      AstNode* init;
+      AstNode* condition;
+      AstNode* update;
+      AstNode* body;
+    } for_stmt;
   } as;
 };
 
