@@ -46,6 +46,8 @@ static AstNode* parse_return();
 static AstNode* parse_break();
 static AstNode* parse_continue();
 static AstNode* parse_if();
+static AstNode* parse_switch();
+static AstNode* parse_case();
 static AstNode* parse_while();
 static AstNode* parse_do_while();
 static AstNode* parse_for();
@@ -267,6 +269,7 @@ static AstNode* parse_statement() {
   if (match(TOKEN_BREAK)) return parse_break();
   if (match(TOKEN_CONTINUE)) return parse_continue();
   if (match(TOKEN_IF)) return parse_if();
+  if (match(TOKEN_SWITCH)) return parse_switch();
   if (match(TOKEN_LEFT_BRACE)) return parse_block();
   if (match(TOKEN_WHILE)) return parse_while();
   if (match(TOKEN_DO)) return parse_do_while();
@@ -346,6 +349,69 @@ static AstNode* parse_if() {
   n->as.if_stmt.condition = condition;
   n->as.if_stmt.thenBranch = then_branch;
   n->as.if_stmt.elseBranch = else_branch;
+  return n;
+}
+
+static AstNode* parse_switch() {
+  i32 line = parser.previous.line;
+  consume(TOKEN_LEFT_PAREN, "Parser: Expected '(' after 'switch'.");
+  AstNode *condition = parse_expression();
+  consume(TOKEN_RIGHT_PAREN, "Parser: Expected ')' after expression.");
+
+  AstNode **cases = PUSH_ARRAY(perm_arena, AstNode*, 64);
+  i32 count = 0;
+
+  if (match(TOKEN_LEFT_BRACE)) {
+    while (
+        parser.current.type != TOKEN_RIGHT_BRACE &&
+        parser.current.type != TOKEN_EOF
+    ) {
+      if (match(TOKEN_CASE) || match(TOKEN_DEFAULT))
+        cases[count++] = parse_case();
+      else
+        cases[count++] = parse_statement();
+    }
+
+    consume(TOKEN_RIGHT_BRACE, "Parser: Expected '}' after switch.");
+  } else
+    consume(TOKEN_SEMICOLON, "Parser: Expected ';' or '{' after switch.");
+
+
+  AstNode *n = make_node(perm_arena, NODE_SWITCH, line);
+  n->as.switch_stmt.condition = condition;
+  n->as.switch_stmt.cases = cases;
+  n->as.switch_stmt.count = count;
+
+  return n;
+}
+
+static AstNode* parse_case() {
+  i32 line = parser.previous.line;
+  bool is_default = parser.previous.type == TOKEN_DEFAULT;
+
+  AstNode *expression = NULL;
+  if (!is_default)
+    expression = parse_expression();
+  consume(TOKEN_COLON, "Parser: Expected ':' after case.");
+
+  AstNode **statements = PUSH_ARRAY(perm_arena, AstNode*, 64);
+  i32 count = 0;
+
+  while (
+      parser.current.type != TOKEN_CASE         &&
+      parser.current.type != TOKEN_DEFAULT      &&
+      parser.current.type != TOKEN_RIGHT_BRACE  &&
+      parser.current.type != TOKEN_EOF
+  ) {
+    statements[count++] = parse_statement();
+  }
+
+  AstNode *n = make_node(perm_arena, NODE_CASE, line);
+  n->as.case_stmt.expression = expression;
+  n->as.case_stmt.statements = statements;
+  n->as.case_stmt.count = count;
+  n->as.case_stmt.is_default = is_default;
+
   return n;
 }
 

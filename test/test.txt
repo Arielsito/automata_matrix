@@ -1,1 +1,15 @@
-HOLA!, TERMINAMOS.
+//HOLA!, TERMINAMOS.
+
+switch(x);
+{
+  case 1:
+    a = 5;
+    break;
+  case 2:
+    //
+  case 3:
+    b = 3;
+    break;
+  default:
+    c = 0;
+}

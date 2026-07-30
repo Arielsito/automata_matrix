@@ -16,6 +16,8 @@ typedef enum nodetype {
   NODE_BREAK,
   NODE_CONTINUE,
   NODE_IF,
+  NODE_SWITCH,
+  NODE_CASE,
   NODE_BLOCK,
   NODE_WHILE,
   NODE_DO_WHILE,
@@ -73,6 +75,19 @@ struct AstNode {
       AstNode* thenBranch;
       AstNode* elseBranch;
     } if_stmt;
+
+    struct {
+      AstNode* condition;
+      AstNode **cases;
+      i32 count;
+    } switch_stmt;
+
+    struct {
+      AstNode *expression;
+      AstNode **statements;
+      i32 count;
+      bool is_default;
+    } case_stmt;
 
     struct {
       AstNode** statements;
