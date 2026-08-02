@@ -1,4 +1,5 @@
 #include "../include/debug.h"
+#include <stddef.h>
 // TokenType values in strings for debugging
 static const char* const token_names[] = {
   [TOKEN_IDENTIFIER]      = "IDENTIFIER",
@@ -55,5 +56,6 @@ static const char* const token_names[] = {
   // [TOKEN_LIB]           = "LIB",
 };
 const char* token_type_name(TokenType type) {
-  return token_names[type];
+  const char *name = token_names[type];
+  return name != NULL ? name : "UNKNOWN";
 }
