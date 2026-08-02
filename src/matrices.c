@@ -55,6 +55,7 @@ const State number_dfa[][3] = {
   [0] = {
     {ACTION_CALL, .payload.sub = &digit, 1},
     {ACTION_NONE, .payload.c = '.', 3},
+    {ACTION_REJECT, .payload.token_type = TOKEN_ERROR, -1}
   },
   [1] = {
     {ACTION_CALL, .payload.sub = &digit, 1},
@@ -263,7 +264,6 @@ const State stringLiteral_dfa[][5] = {
     {ACTION_NONE, .payload.c = '"', 2},
     {ACTION_NONE, .payload.c = '\\', 3},
     {ACTION_NONE, .payload.c = '\n', 4},
-    {ACTION_NONE, .payload.c = '\0', 4},
     {ACTION_ANY, .payload.c = 0, 1}
   },
   [2] = {
@@ -300,13 +300,13 @@ const State charLiteral_dfa[][3] = {
   }
 };
 
-const Dfa letter = { (State *) letter_dfa, ROWS(letter_dfa),  COLS(letter_dfa)};
-const Dfa digit = { (State *) digit_dfa, ROWS(digit_dfa), COLS(digit_dfa) };
-const Dfa identifier = { (State *) identifier_dfa, ROWS(identifier_dfa), COLS(identifier_dfa) };
-const Dfa number = { (State *) number_dfa, ROWS(number_dfa), COLS(number_dfa) };
-const Dfa opLenght3 = { (State *) opLenght3_dfa, ROWS(opLenght3_dfa), COLS(opLenght3_dfa)};
-const Dfa opLenght2 = { (State *) opLenght2_dfa, ROWS(opLenght2_dfa), COLS(opLenght2_dfa)};
-const Dfa opLenght1 = { (State *) opLenght1_dfa, ROWS(opLenght1_dfa), COLS(opLenght1_dfa)};
-const Dfa stringLiteral = { (State *) stringLiteral_dfa, ROWS(stringLiteral_dfa), COLS(stringLiteral_dfa)};
-const Dfa charLiteral = { (State *) charLiteral_dfa, ROWS(charLiteral_dfa), COLS(charLiteral_dfa)};
+const Dfa letter = { letter_dfa[0], ROWS(letter_dfa),  COLS(letter_dfa)};
+const Dfa digit = { digit_dfa[0], ROWS(digit_dfa), COLS(digit_dfa) };
+const Dfa identifier = { identifier_dfa[0], ROWS(identifier_dfa), COLS(identifier_dfa) };
+const Dfa number = { number_dfa[0], ROWS(number_dfa), COLS(number_dfa) };
+const Dfa opLenght3 = { opLenght3_dfa[0], ROWS(opLenght3_dfa), COLS(opLenght3_dfa)};
+const Dfa opLenght2 = { opLenght2_dfa[0], ROWS(opLenght2_dfa), COLS(opLenght2_dfa)};
+const Dfa opLenght1 = { opLenght1_dfa[0], ROWS(opLenght1_dfa), COLS(opLenght1_dfa)};
+const Dfa stringLiteral = { stringLiteral_dfa[0], ROWS(stringLiteral_dfa), COLS(stringLiteral_dfa)};
+const Dfa charLiteral = { charLiteral_dfa[0], ROWS(charLiteral_dfa), COLS(charLiteral_dfa)};
 
