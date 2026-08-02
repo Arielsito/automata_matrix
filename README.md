@@ -1,11 +1,12 @@
 # automata_matrix
+## To compile the project
 ```sh
 mkdir build
 cd build
 cmake ..
 cmake --build .
 ```
-> [!Info] To run tests (criterion)
+## To run tests (criterion)
 Inside the build directory, will be a binary called 'unit_tests'.
 You can run specific tests or your own tests by using the flag ```--filter [pattern]```.
 ```bash
