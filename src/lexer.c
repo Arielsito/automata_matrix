@@ -142,7 +142,6 @@ static Token run_dfa(const Dfa *dfa, i32 start) {
 
   while (1) {
     char c = *scanner.current;
-    if (c == '\0') return make_token(TOKEN_ERROR);
     for (i32 col = 0; col < dfa->cols; col++) {
       State s = CELL(dfa, state, col);
 
@@ -233,10 +232,3 @@ static void skip_whitespace() {
     }
   }
 }
-
-// static i8 match(char expected) {
-//   if (*scanner.current == '\0') return 0;
-//   if (*scanner.current != expected) return 0;
-//   scanner.current++;
-//   return 1;
-// }
