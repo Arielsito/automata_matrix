@@ -1,6 +1,4 @@
 #include <criterion/criterion.h>
-#include <criterion/internal/assert.h>
-#include <criterion/internal/test.h>
 #include <criterion/parameterized.h>
 #include <stddef.h>
 #include <string.h>
@@ -37,7 +35,7 @@ ParameterizedTest(IdentCase *tc, lexer_identifier, valid_cases) {
       tc->input, (i32)strlen(tc->input), t.length);
   Token e = scan_token();
   cr_assert_eq(e.type, TOKEN_EOF,
-      "'%s' most consume a SINGLE token ", tc->input);
+      "'%s' most be a SINGLE token ", tc->input);
 }
 
 typedef struct { char input[16]; TokenType expected; } CaseCase;
