@@ -7,7 +7,7 @@ cmake ..
 cmake --build .
 ```
 ## To run tests (criterion)
-So the tests are disabled by default in the [[./CMakeLists.txt]], to enable unit testing with criterion run the next command:
+So the tests are disabled by default in the [./CMakeLists.txt], to enable unit testing with criterion run the next command:
 ```bash
 cmake -DBUILD_TESTING=ON -B build -S .
 cmake --build build
