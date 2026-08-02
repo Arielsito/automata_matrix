@@ -2,7 +2,9 @@
 #include "../include/arena.h"
 
 Arena *arena_create(u64 capacity) {
+  if (capacity < ARENA_BASE_POS) return NULL;
   Arena *arena = (Arena*)malloc(capacity);
+  if (arena == NULL) return NULL;
 
   arena->capacity = capacity;
   arena->pos = ARENA_BASE_POS;
@@ -15,6 +17,7 @@ void arena_destroy(Arena *arena) {
 
 void *arena_push(Arena *arena, u64 size, bool non_zero) {
   u64 pos_aligned = ALIGN_UP_POW2(arena->pos, ARENA_ALIGN);
+  if (size > arena->capacity - pos_aligned) return NULL;
   u64 new_pos = pos_aligned + size;
 
   if (new_pos > arena->capacity) return NULL;
