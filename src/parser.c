@@ -1,5 +1,6 @@
 #include "../include/common.h"
 #include "../include/lexer.h"
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 #include "../include/parser.h"
@@ -30,6 +31,14 @@ typedef struct {
   Presedence p;
 } ParseRule;
 
+static AstNode** grow_array(Arena *arena, AstNode **arr, i32 *cap) {
+  *cap *= 2;
+  if (*cap > 1 << 20) return NULL;
+  AstNode **new = PUSH_ARRAY(arena, AstNode*, *cap);
+  memcpy(new, arr, (*cap / 2) * sizeof(AstNode*));
+  return new;
+}
+
 // AST functions
 static AstNode* make_node(Arena *arena, NodeType type, i32 line) {
   AstNode* n = PUSH_STRUCT(arena, AstNode);
@@ -57,6 +66,8 @@ static AstNode* parse_expression_stmt();
 static AstNode* parse_expression();
 static AstNode* parse_presedence(Presedence);
 static AstNode* number();
+static AstNode* l_string();
+static AstNode* l_char();
 static AstNode* variable();
 static AstNode* grouping();
 static AstNode* unary();
@@ -71,7 +82,6 @@ static ParseRule rules[] = {
   [TOKEN_LEFT_PAREN] = { grouping, NULL, PREC_NONE },
 
   [TOKEN_NOT] = { unary, NULL, PREC_NONE },
-  [TOKEN_NOT_BITW] = { unary, NULL, PREC_NONE },
   [TOKEN_MINUS] = { unary, binary, PREC_TERM },
 
   [TOKEN_EQUAL] = { NULL, assign, PREC_ASSIGN },
@@ -99,6 +109,22 @@ static ParseRule rules[] = {
   [TOKEN_AND] = { NULL, binary, PREC_AND },
   [TOKEN_OR] = { NULL, binary, PREC_OR },
 
+  [TOKEN_LEFT_SHIFT] = { NULL, binary, PREC_SHIFT },
+  [TOKEN_RIGHT_SHIFT] = { NULL, binary, PREC_SHIFT },
+  [TOKEN_LSE] = { NULL, assign, PREC_ASSIGN },
+  [TOKEN_RSE] = { NULL, assign, PREC_ASSIGN },
+
+  [TOKEN_NOT_BITW] = { unary, NULL, PREC_NONE },
+  [TOKEN_AND_BITW] = { NULL, binary, PREC_BITW },
+  [TOKEN_OR_BITW] = { NULL, binary, PREC_BITW },
+  [TOKEN_XOR_BITW] = { NULL, binary, PREC_BITW },
+  [TOKEN_AND_BITW_EQUAL] = { NULL, assign, PREC_ASSIGN },
+  [TOKEN_OR_BITW_EQUAL] = { NULL, assign, PREC_ASSIGN },
+  [TOKEN_XOR_BITW_EQUAL] = { NULL, assign, PREC_ASSIGN },
+
+  [TOKEN_STRING_LITERAL] = { l_string, NULL, PREC_NONE },
+  [TOKEN_CHAR_LITERAL] = { l_char, NULL, PREC_NONE },
+
   [TOKEN_EOF] = { NULL, NULL, PREC_NONE },
   [TOKEN_ERROR] = { NULL, NULL, PREC_NONE },
 };
@@ -116,7 +142,7 @@ typedef struct parser {
 } Parser;
 
 static Parser parser;
-Arena *perm_arena; 
+static Arena *perm_arena; 
 
 static void advance();
 static void consume(TokenType, const char*);
@@ -130,6 +156,10 @@ bool compile(const char* source) {
   init_lexer();
   init_scan(source);
   perm_arena = arena_create(MiB(64));
+  if (perm_arena == NULL) {
+    fprintf(stderr, "Error: Out of memory.");
+    return false;
+  }
   parser.hadError = false;
   parser.panicMode = false;
   parser.source = source;
@@ -153,9 +183,8 @@ static void advance() {
     parser.current = scan_token();
     if (parser.current.type != TOKEN_ERROR) break;
     if (!parser.panicMode) {
-      char lexer_msg[128];
-      snprintf(lexer_msg, sizeof(lexer_msg), "Lexer: Invalid character."); 
-      error_at_current(lexer_msg);
+      const char *msg = take_lexer_error();
+      error_at_current(msg != NULL ? msg : "Lexer: Invalid character.");
       //fprintf(stderr, "Error at line %d: %.*s\n", parser.current.line, parser.current.length, parser.current.start);
       //parser.hadError = true;
       //parser.panicMode = true;
@@ -163,17 +192,17 @@ static void advance() {
   }
 }
 
-static const char* token_type_to_string(TokenType type) {
-  switch (type) {
-    case TOKEN_LEFT_PAREN: return "'('";
-    case TOKEN_RIGHT_PAREN: return "')'";
-    case TOKEN_LEFT_BRACE: return "'{'";
-    case TOKEN_RIGHT_BRACE: return "'}'";
-    case TOKEN_SEMICOLON: return "';'";
-    case TOKEN_EOF: return "end of file";
-    default: return "token";
-  }
-}
+// static const char* token_type_to_string(TokenType type) {
+//   switch (type) {
+//     case TOKEN_LEFT_PAREN: return "'('";
+//     case TOKEN_RIGHT_PAREN: return "')'";
+//     case TOKEN_LEFT_BRACE: return "'{'";
+//     case TOKEN_RIGHT_BRACE: return "'}'";
+//     case TOKEN_SEMICOLON: return "';'";
+//     case TOKEN_EOF: return "end of file";
+//     default: return "token";
+//   }
+// }
 
 static void error_at(Token* token, const char* message) {
   if (parser.panicMode) return;
@@ -289,8 +318,7 @@ static AstNode* parse_expression_stmt() {
 
 static AstNode* parse_block() {
   AstNode *n = make_node(perm_arena, NODE_BLOCK, parser.previous.line);
-  // i32 capacity = 8;
-  // n->as.block.statements = malloc(sizeof(AstNode*) * capacity);
+  n->as.block.capacity = 64;
   n->as.block.statements = PUSH_ARRAY(perm_arena, AstNode*, 64);
   n->as.block.count = 0;
 
@@ -301,10 +329,14 @@ static AstNode* parse_block() {
       parser.panicMode = false;
     }
     if (stmt != NULL) {
-      // if (n->as.block.count == capacity) {
-      //   capacity *= 2;
-      //   n->as.block.statements = realloc(n->as.block.statements, sizeof(AstNode*) * capacity);
-      // }
+      if (n->as.block.count == n->as.block.capacity) {
+        AstNode **n_arr = grow_array(perm_arena, n->as.block.statements, &n->as.block.capacity);
+        if (n_arr == NULL) {
+          error_at_current("Parser: too many statements.");
+          return NULL;
+        }
+        n->as.block.statements = n_arr;
+      }
       n->as.block.statements[n->as.block.count++] = stmt;
     }
   }
@@ -358,7 +390,8 @@ static AstNode* parse_switch() {
   AstNode *condition = parse_expression();
   consume(TOKEN_RIGHT_PAREN, "Parser: Expected ')' after expression.");
 
-  AstNode **cases = PUSH_ARRAY(perm_arena, AstNode*, 64);
+  i32 cap = 64;
+  AstNode **cases = PUSH_ARRAY(perm_arena, AstNode*, cap);
   i32 count = 0;
 
   if (match(TOKEN_LEFT_BRACE)) {
@@ -366,10 +399,16 @@ static AstNode* parse_switch() {
         parser.current.type != TOKEN_RIGHT_BRACE &&
         parser.current.type != TOKEN_EOF
     ) {
-      if (match(TOKEN_CASE) || match(TOKEN_DEFAULT))
-        cases[count++] = parse_case();
-      else
-        cases[count++] = parse_statement();
+      if (count == cap) {
+        AstNode **n_arr = grow_array(perm_arena, cases, &cap);
+        if (n_arr == NULL) {
+          error_at_current("Parser: too many cases.");
+          return NULL;
+        }
+        cases = n_arr;
+      }
+      cases[count++] = match(TOKEN_CASE) || match(TOKEN_DEFAULT) 
+        ? parse_case() : parse_statement();
     }
 
     consume(TOKEN_RIGHT_BRACE, "Parser: Expected '}' after switch.");
@@ -394,7 +433,8 @@ static AstNode* parse_case() {
     expression = parse_expression();
   consume(TOKEN_COLON, "Parser: Expected ':' after case.");
 
-  AstNode **statements = PUSH_ARRAY(perm_arena, AstNode*, 64);
+  i32 cap = 64;
+  AstNode **statements = PUSH_ARRAY(perm_arena, AstNode*, cap);
   i32 count = 0;
 
   while (
@@ -403,6 +443,14 @@ static AstNode* parse_case() {
       parser.current.type != TOKEN_RIGHT_BRACE  &&
       parser.current.type != TOKEN_EOF
   ) {
+    if (count == cap) {
+      AstNode **n_arr = grow_array(perm_arena, statements, &cap);
+      if (n_arr == NULL) {
+        error_at_current("Parser: too many statements.");
+        return NULL;
+      }
+      statements = n_arr;
+    }
     statements[count++] = parse_statement();
   }
 
@@ -507,12 +555,16 @@ static AstNode* parse_presedence(Presedence p) {
 static AstNode* number() {
   AstNode* n = make_node(perm_arena, NODE_LITERAL, parser.previous.line);
   if (parser.previous.type == TOKEN_INTEGER_LITERAL) {
-    i32 val = 0;
+    i64 val = 0;
     for (i32 i = 0; i < parser.previous.length; i++) {
       char c = parser.previous.start[i];
       val = (val * 10) + (c - '0');
+      if (val > INT32_MAX) {
+        error_at_previous("Parser: Integer literal out of range.");
+        return NULL;
+      }
     }
-    n->as.literal.ival = val;
+    n->as.literal.ival = (i32)val;
     n->as.literal.literalType = TOKEN_INTEGER_LITERAL;
   } else if (parser.previous.type == TOKEN_DOUBLE_LITERAL) {
     f64 val = 0.0;
@@ -539,6 +591,85 @@ static AstNode* number() {
   return n;
 }
 
+static AstNode* l_string() {
+  AstNode* n = make_node(perm_arena, NODE_LITERAL, parser.previous.line);
+  const char *src = parser.previous.start;
+  i32 len = parser.previous.length;
+
+  if (len < 2 || src[0] != '"' || src[len - 1] != '"') {
+    error_at_current("Parser: Malformed string literal.");
+    return NULL;
+  }
+
+  char *out = PUSH_ARRAY(perm_arena, char, len);
+  i32 out_len = 0;
+  for (i32 i = 1; i < len - 1; i++) {
+    char c = src[i];
+    if (c == '\\') {
+      if (i + 1 >= len - 1) {
+        error_at_previous("Parser: Unterminated escape sequence in string literal.");
+        return NULL;
+      }
+      switch (src[++i]) {
+        case 'n': c = '\n'; break;
+        case 't': c = '\t'; break;
+        case 'r': c = '\r'; break;
+        case '0': c = '\0'; break;
+        case '\\': c = '\\'; break;
+        case '"': c = '"'; break;
+        case '\'': c = '\''; break;
+        default:
+          error_at_previous("Parser: Unknown escape sequence in string literal.");
+          return NULL;
+      }
+    }
+    out[out_len++] = c;
+  }
+  out[out_len] = '\0';
+
+  n->as.literal.sval = out;
+  n->as.literal.literalType = TOKEN_STRING_LITERAL;
+
+  return n;
+}
+
+static AstNode* l_char() {
+  AstNode* n = make_node(perm_arena, NODE_LITERAL, parser.previous.line);
+  const char *src = parser.previous.start;
+  i32 len = parser.previous.length;
+
+  if (len < 3 || src[0] != '\'' || src[len - 1] != '\'') {
+    error_at_current("Parser: Malformed char literal.");
+    return NULL;
+  }
+
+  char c;
+  if (len == 3)
+    c = src[1];
+  else if (len == 4 && src[1] == '\\') {
+    switch (src[2]) {
+      case 'n': c = '\n'; break;
+      case 't': c = '\t'; break;
+      case 'r': c = '\r'; break;
+      case '0': c = '\0'; break;
+      case '\\': c = '\\'; break;
+      case '"': c = '"'; break;
+      case '\'': c = '\''; break;
+      default:
+        error_at_current("Parser: Unknown escape sequence in char literal.");
+        return NULL;
+    }
+  } else {
+    error_at_previous("Parser: Char literal must contain exactly one character.");
+    return NULL;
+  }
+
+  n->as.literal.cval = c;
+  n->as.literal.literalType = TOKEN_CHAR_LITERAL;
+
+  return n;
+}
+
 static AstNode* variable() {
   AstNode* n = make_node(perm_arena, NODE_VARIABLE, parser.previous.line);
   i32 len = parser.previous.length;
@@ -547,11 +678,6 @@ static AstNode* variable() {
   memcpy(name, parser.previous.start, len);
   name[len] = '\0';
   n->as.variable.name = name;
-  
-  // n->as.variable.name = malloc(len + 1);
-  // for (i32 i = 0; i < len; i++)
-  //   n->as.variable.name[i] = parser.previous.start[i];
-  // n->as.variable.name[len] = '\0';
 
   return n;
 }
@@ -577,7 +703,7 @@ static AstNode* binary(AstNode* left) {
   TokenType op = parser.previous.type;
   ParseRule* rule = get_rule(op);
 
-  AstNode* right = parse_presedence((Presedence)(rule->p + 1));
+  AstNode* right = parse_presedence((Presedence)((i32)rule->p + 1));
 
   if (parser.panicMode || right == NULL || left == NULL) return NULL;
 
@@ -589,6 +715,7 @@ static AstNode* binary(AstNode* left) {
 }
 
 static AstNode* assign(AstNode* target) {
+  if (target == NULL) return NULL;
   i32 line = parser.previous.line;
   TokenType op = parser.previous.type;
   if (target->type != NODE_VARIABLE) {
