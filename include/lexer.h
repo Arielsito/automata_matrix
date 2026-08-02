@@ -84,6 +84,7 @@ typedef struct scanner Scanner;
 void init_lexer();
 void init_scan(const char*);
 Token scan_token();
+const char* take_lexer_error(void);
 const char* token_type_name(TokenType);
 
 #endif // LEXER_H
