@@ -28,8 +28,10 @@ if (BUILD_TESTING)
 
   add_executable(unit_tests
     test/lexer_keyword_tests.c
-    test/lexer_keyword_boundary_tests.c
     test/lexer_identifier_tests.c
+    test/lexer_number_tests.c
+    test/lexer_strings_chars_tests.c
+    test/lexer_operator_tests.c
   )
 
   target_link_libraries(unit_tests compiler_core ${CRITERION_LIBRARIES})
