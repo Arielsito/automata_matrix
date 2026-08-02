@@ -26,6 +26,15 @@ typedef struct hash_entry {
 
 static HashEntry keywords[HASH_SIZE];
 
+// errors
+static const char *lex_error = NULL;
+
+const char* take_lexer_error(void) {
+  const char *msg = lex_error;
+  lex_error = NULL;
+  return msg;
+}
+
 // djb2
 static u64 hash(const char *str, i32 len) {
   u64 hash = 5381;
@@ -59,6 +68,7 @@ void init_scan(const char *source) {
 }
 
 Token scan_token() {
+  lex_error = NULL;
   skip_whitespace();
   scanner.start = scanner.current;
 
@@ -78,11 +88,21 @@ Token scan_token() {
   scanner.current = start_pos;
   t = run_dfa(&stringLiteral, 0);
   if (t.type != TOKEN_ERROR) return t;
+  if (start_pos[0] == '"') {
+    lex_error = "Lexer: unterminated string literal.";
+    while (*scanner.current != '\n' && *scanner.current != '\0') scanner.current++;
+    return make_token(TOKEN_ERROR);
+  }
   
   // 3. Literal chars
   scanner.current = start_pos;
   t = run_dfa(&charLiteral, 0);
   if (t.type != TOKEN_ERROR) return t;
+  if (start_pos[0] == '\'') {
+    lex_error = "Lexer: unterminated char literal.";
+    while (*scanner.current != '\n' && *scanner.current != '\0') scanner.current++;
+    return make_token(TOKEN_ERROR);
+  }
   
   // 4. Number
   scanner.current = start_pos;
@@ -122,6 +142,7 @@ static Token run_dfa(const Dfa *dfa, i32 start) {
 
   while (1) {
     char c = *scanner.current;
+    if (c == '\0') return make_token(TOKEN_ERROR);
     for (i32 col = 0; col < dfa->cols; col++) {
       State s = CELL(dfa, state, col);
 
