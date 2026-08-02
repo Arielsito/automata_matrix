@@ -639,7 +639,7 @@ static AstNode* l_char() {
   i32 len = parser.previous.length;
 
   if (len < 3 || src[0] != '\'' || src[len - 1] != '\'') {
-    error_at_current("Parser: Malformed char literal.");
+    error_at_previous("Parser: Malformed char literal.");
     return NULL;
   }
 
@@ -656,7 +656,7 @@ static AstNode* l_char() {
       case '"': c = '"'; break;
       case '\'': c = '\''; break;
       default:
-        error_at_current("Parser: Unknown escape sequence in char literal.");
+        error_at_previous("Parser: Unknown escape sequence in char literal.");
         return NULL;
     }
   } else {
@@ -694,6 +694,7 @@ static AstNode* unary() {
   AstNode* right = parse_presedence(PREC_UNARY);
   AstNode* n = make_node(perm_arena, NODE_UNARY, line);
   n->as.unary.op = op;
+  n->as.unary.postfix = true;
   n->as.unary.right = right;
   return n;
 }
