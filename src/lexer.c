@@ -10,7 +10,7 @@ typedef struct scanner {
   int line;
 } Scanner;
 
-Scanner scanner;
+static Scanner scanner;
 
 static Token make_token(TokenType);
 static Token run_dfa(const Dfa*, i32);
