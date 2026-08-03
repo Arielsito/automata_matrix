@@ -11,9 +11,9 @@ static void eval_expression() {
       printf("\n");
       break;
     }
-    bool success = compile(buff);
+    bool success = compile(buff) != NULL;
     if (!success) exit(65);
-    else printf("Success\n");
+    else printf("Parsed succesfully\n");
   }
 }
 
@@ -43,10 +43,10 @@ static char *readFile(const char* path) {
 
 static void runFile(const char *path) {
   char *source = readFile(path);
-  bool success = compile(source);
+  bool success = compile(source) != NULL;
   free(source);
   if (!success) exit(65);
-  else printf("Success\n");
+  else printf("Parsed succesfully\n");
 }
 
 int main(i32 argc, char *argv[]) {

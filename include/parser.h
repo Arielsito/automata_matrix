@@ -109,6 +109,6 @@ struct AstNode {
   } as;
 };
 
-bool compile(const char*);
+AstNode* compile(const char*);
 
 #endif

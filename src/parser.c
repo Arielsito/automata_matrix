@@ -152,29 +152,46 @@ static void error_at_current(const char*);
 static void error_at_previous(const char*);
 static void sync();
 
-bool compile(const char* source) {
+AstNode* compile(const char* source) {
   init_lexer();
   init_scan(source);
-  perm_arena = arena_create(MiB(64));
   if (perm_arena == NULL) {
-    fprintf(stderr, "Error: Out of memory.");
-    return false;
+    perm_arena = arena_create(MiB(64));
+    if (perm_arena == NULL) { fprintf(stderr, "Error: Out of memory.\n"); return NULL; }
   }
+  else arena_clear(perm_arena);
   parser.hadError = false;
   parser.panicMode = false;
   parser.source = source;
 
   advance();
 
+  AstNode *root = make_node(perm_arena, NODE_BLOCK, 0);
+  root->as.block.capacity = 256;
+  root->as.block.statements = PUSH_ARRAY(perm_arena, AstNode*, 256);
+  root->as.block.count = 0;
+
   while (!match(TOKEN_EOF)) {
     parser.panicMode = false;
-    parse_statement();
+    AstNode *stmt = parse_statement();
+    if (stmt != NULL) {
+      if (root->as.block.count == root->as.block.capacity) {
+        AstNode **n = grow_array(perm_arena, root->as.block.statements, &root->as.block.capacity);
+        if (n == NULL) { error_at_current("Parser: too many statements."); break; }
+        root->as.block.statements = n;
+      }
+      root->as.block.statements[root->as.block.count++] = stmt;
+    }
     if (parser.panicMode) sync();
   }
-  bool result = !parser.hadError;
-  arena_destroy(perm_arena);
-  perm_arena = NULL;
-  return result;
+
+  if (parser.hadError) {
+    arena_destroy(perm_arena);
+    perm_arena = NULL;
+    return NULL; // false
+  }
+
+  return root; // true
 }
 
 static void advance() {
