@@ -711,7 +711,7 @@ static AstNode* unary() {
   AstNode* right = parse_presedence(PREC_UNARY);
   AstNode* n = make_node(perm_arena, NODE_UNARY, line);
   n->as.unary.op = op;
-  n->as.unary.postfix = true;
+  n->as.unary.postfix = false;
   n->as.unary.right = right;
   return n;
 }
@@ -757,6 +757,7 @@ static AstNode* postfix(AstNode* left) {
   TokenType op = parser.previous.type;
   AstNode *n = make_node(perm_arena, NODE_UNARY, line);
   n->as.unary.op = op;
+  n->as.unary.postfix = true;
   n->as.unary.right = left;
   return n;
 }
