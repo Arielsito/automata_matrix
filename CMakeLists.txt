@@ -27,14 +27,14 @@ if (BUILD_TESTING)
   pkg_check_modules(CRITERION REQUIRED criterion)
 
   add_executable(unit_tests
-    lexer_tests/lexer_keyword_tests.c
-    lexer_tests/lexer_identifier_tests.c
-    lexer_tests/lexer_number_tests.c
-    lexer_tests/lexer_strings_chars_tests.c
-    lexer_tests/lexer_operator_tests.c
-    lexer_tests/lexer_comments_ws_tests.c
-    lexer_tests/lexer_stream_test.c
-    parser_tests/parser_expression_tests.c
+    test/lexer_tests/lexer_keyword_tests.c
+    test/lexer_tests/lexer_identifier_tests.c
+    test/lexer_tests/lexer_number_tests.c
+    test/lexer_tests/lexer_strings_chars_tests.c
+    test/lexer_tests/lexer_operator_tests.c
+    test/lexer_tests/lexer_comments_ws_tests.c
+    test/lexer_tests/lexer_stream_test.c
+    test/parser_tests/parser_expression_tests.c
   )
 
   target_link_libraries(unit_tests compiler_core ${CRITERION_LIBRARIES})
