@@ -177,7 +177,7 @@ static void ast_render(AstBuf *b, const AstNode *n) {
       ast_append(b, ")");
       break;
     case NODE_CASE:
-      ast_append(b, n->as.case_stmt.is_default ? "(default" : "(case ");
+      ast_append(b, n->as.case_stmt.is_default ? "(default" : "(case");
       if (n->as.case_stmt.expression) {
         ast_append(b, " ");
         ast_render(b, n->as.case_stmt.expression);
