@@ -2,7 +2,7 @@
 #include <criterion/internal/assert.h>
 #include <criterion/internal/test.h>
 #include <criterion/parameterized.h>
-#include "../include/lexer.h"
+#include "lexer.h"
 
 // initialize scanner
 static void initialize_lexer(void) {

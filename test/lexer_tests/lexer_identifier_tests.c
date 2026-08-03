@@ -2,7 +2,7 @@
 #include <criterion/parameterized.h>
 #include <stddef.h>
 #include <string.h>
-#include "../include/lexer.h"
+#include "lexer.h"
 
 // initialize scanner
 static void initialize_lexer(void) {
