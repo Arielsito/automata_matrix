@@ -166,21 +166,21 @@ AstNode* compile(const char* source) {
 
   advance();
 
-  AstNode *root = make_node(perm_arena, NODE_BLOCK, 0);
-  root->as.block.capacity = 256;
-  root->as.block.statements = PUSH_ARRAY(perm_arena, AstNode*, 256);
-  root->as.block.count = 0;
+  AstNode *root = make_node(perm_arena, NODE_PROGRAM, 0);
+  root->as.program.capacity = 256;
+  root->as.program.statements = PUSH_ARRAY(perm_arena, AstNode*, 256);
+  root->as.program.count = 0;
 
   while (!match(TOKEN_EOF)) {
     parser.panicMode = false;
     AstNode *stmt = parse_statement();
     if (stmt != NULL) {
-      if (root->as.block.count == root->as.block.capacity) {
-        AstNode **n = grow_array(perm_arena, root->as.block.statements, &root->as.block.capacity);
+      if (root->as.program.count == root->as.program.capacity) {
+        AstNode **n = grow_array(perm_arena, root->as.program.statements, &root->as.program.capacity);
         if (n == NULL) { error_at_current("Parser: too many statements."); break; }
-        root->as.block.statements = n;
+        root->as.program.statements = n;
       }
-      root->as.block.statements[root->as.block.count++] = stmt;
+      root->as.program.statements[root->as.program.count++] = stmt;
     }
     if (parser.panicMode) sync();
   }

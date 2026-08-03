@@ -1,4 +1,5 @@
 #include "debug.h"
+#include "parser.h"
 #include <stdarg.h>
 #include <stddef.h>
 // TokenType values in strings for debugging
@@ -97,6 +98,11 @@ static void ast_list_render(AstBuf *b, AstNode **items, i32 count) {
 static void ast_render(AstBuf *b, const AstNode *n) {
   if (n == NULL) { ast_append(b, "nil"); return; }
   switch (n->type) {
+    case NODE_PROGRAM: 
+      ast_appendf(b, "(program %d", n->as.program.count);
+      ast_list_render(b, n->as.program.statements, n->as.program.count);
+      ast_append(b, ")");
+      break;
     case NODE_LITERAL:
       switch (n->as.literal.literalType) {
         case TOKEN_INTEGER_LITERAL: ast_appendf(b, "(lit int %d)", n->as.literal.ival); break;
