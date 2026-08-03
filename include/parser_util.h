@@ -1,8 +1,8 @@
 #ifndef PARSER_UTIL_H
 #define PARSER_UTIL_H
 
-#include "../include/parser.h"
-#include "../include/debug.h"
+#include "parser.h"
+#include "debug.h"
 #include <criterion/criterion.h>
 
 static inline bool parse_and_render(const char *src, char *out, u32 size) {

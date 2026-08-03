@@ -1,6 +1,6 @@
-#include "../include/common.h"
-#include "../include/lexer.h"
-#include "../include/matrices.h"
+#include "common.h"
+#include "lexer.h"
+#include "matrices.h"
 
 #define HASH_SIZE 64
 

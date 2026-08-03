@@ -1,5 +1,5 @@
-#include "../include/common.h"
-#include "../include/arena.h"
+#include "common.h"
+#include "arena.h"
 
 Arena *arena_create(u64 capacity) {
   if (capacity < ARENA_BASE_POS) return NULL;

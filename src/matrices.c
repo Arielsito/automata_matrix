@@ -1,4 +1,4 @@
-#include "../include/matrices.h"
+#include "matrices.h"
 
 const State letter_dfa[][54] = {
   [0] = {

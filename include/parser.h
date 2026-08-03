@@ -1,8 +1,8 @@
 #ifndef PARSER_H
 #define PARSER_H
 
-#include "./common.h"
-#include "./lexer.h"
+#include "common.h"
+#include "lexer.h"
 
 typedef enum nodetype {
   NODE_LITERAL,

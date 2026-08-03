@@ -1,4 +1,4 @@
-#include "../include/debug.h"
+#include "debug.h"
 #include <stdarg.h>
 #include <stddef.h>
 // TokenType values in strings for debugging

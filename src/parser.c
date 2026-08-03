@@ -1,10 +1,10 @@
-#include "../include/common.h"
-#include "../include/lexer.h"
+#include "common.h"
+#include "lexer.h"
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
-#include "../include/parser.h"
-#include "../include/arena.h"
+#include "parser.h"
+#include "arena.h"
 
 // presedence
 typedef enum presedence {
