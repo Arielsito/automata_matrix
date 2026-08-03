@@ -1,5 +1,4 @@
 #include <criterion/criterion.h>
-#include <criterion/internal/test.h>
 #include "parser_util.h"
 
 TestSuite(parser_expr, .init = NULL);
