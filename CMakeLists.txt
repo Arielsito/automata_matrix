@@ -32,6 +32,7 @@ if (BUILD_TESTING)
     test/lexer_number_tests.c
     test/lexer_strings_chars_tests.c
     test/lexer_operator_tests.c
+    test/lexer_comments_ws_tests.c
   )
 
   target_link_libraries(unit_tests compiler_core ${CRITERION_LIBRARIES})
