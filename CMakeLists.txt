@@ -37,6 +37,8 @@ if (BUILD_TESTING)
     test/lexer_tests/lexer_stream_test.c
     test/parser_tests/parser_expression_tests.c
     test/parser_tests/parser_control_tests.c
+    test/parser_tests/parser_rejection_tests.c
+    test/parser_tests/parser_stream_tests.c
   )
 
   target_link_libraries(unit_tests compiler_core ${CRITERION_LIBRARIES})
