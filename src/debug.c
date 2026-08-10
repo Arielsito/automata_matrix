@@ -1,4 +1,6 @@
-#include "../include/debug.h"
+#include "debug.h"
+#include "parser.h"
+#include <stdarg.h>
 #include <stddef.h>
 // TokenType values in strings for debugging
 static const char* const token_names[] = {
@@ -33,11 +35,11 @@ static const char* const token_names[] = {
   [TOKEN_LEFT_BRACKET]  = "LEFT_BRACKET",  [TOKEN_RIGHT_BRACKET] = "RIGHT_BRACKET",
   [TOKEN_COMMA]         = "COMMA",         [TOKEN_DOT]           = "DOT",
   [TOKEN_MINUS]         = "MINUS",         [TOKEN_PLUS]          = "PLUS",
-  [TOKEN_MINUS_MINUS]   = "MINUS MINUS",   [TOKEN_PLUS_PLUS]     = "PLUS PLUS",
-  [TOKEN_MINUS_EQUAL]   = "MINUS EQUAL",   [TOKEN_PLUS_EQUAL]    = "PLUS EQUAL",
+  [TOKEN_MINUS_MINUS]   = "MINUS_MINUS",   [TOKEN_PLUS_PLUS]     = "PLUS_PLUS",
+  [TOKEN_MINUS_EQUAL]   = "MINUS_EQUAL",   [TOKEN_PLUS_EQUAL]    = "PLUS_EQUAL",
   [TOKEN_STAR]          = "STAR",          [TOKEN_SLASH]         = "SLASH",
-  [TOKEN_STAR_EQUAL]    = "STAR EQUAL",    [TOKEN_SLASH_EQUAL]   = "SLASH EQUAL",
-  [TOKEN_MOD]           = "MOD",           [TOKEN_MOD_EQUAL]     = "MOD EQUAL",
+  [TOKEN_STAR_EQUAL]    = "STAR_EQUAL",    [TOKEN_SLASH_EQUAL]   = "SLASH_EQUAL",
+  [TOKEN_MOD]           = "MOD",           [TOKEN_MOD_EQUAL]     = "MOD_EQUAL",
   [TOKEN_SEMICOLON]     = "SEMICOLON",
   [TOKEN_COLON]         = "COLON",         [TOKEN_QUESTION]      = "QUESTION",
   [TOKEN_NOT_EQUAL]     = "NOT_EQUAL",     [TOKEN_NOT]           = "NOT",
@@ -58,4 +60,155 @@ static const char* const token_names[] = {
 const char* token_type_name(TokenType type) {
   const char *name = token_names[type];
   return name != NULL ? name : "UNKNOWN";
+}
+
+typedef struct {
+  char *buf;
+  u32 size;
+  u32 pos;
+  bool truncated;
+} AstBuf;
+
+static void ast_append(AstBuf *b, const char *s) {
+  while (*s) {
+    if (b->pos + 2 >= b->size) { b->truncated = true; return; }
+    b->buf[b->pos++] = *s++;
+  }
+}
+
+static void ast_appendf(AstBuf *b, const char *fmt, ...) {
+  char tmp[65];
+  va_list ap;
+  va_start(ap, fmt);
+  u32 used = (u32)vsnprintf(tmp, sizeof(tmp), fmt, ap);
+  va_end(ap);
+  if (used >= sizeof(tmp)) { b->truncated = true; return; }
+  ast_append(b, tmp);
+}
+
+static void ast_render(AstBuf*, const AstNode*);
+
+static void ast_list_render(AstBuf *b, AstNode **items, i32 count) {
+  for (i32 i = 0; i < count; i++) {
+    ast_append(b, " ");
+    ast_render(b, items[i]);
+  }
+}
+
+static void ast_render(AstBuf *b, const AstNode *n) {
+  if (n == NULL) { ast_append(b, "nil"); return; }
+  switch (n->type) {
+    case NODE_PROGRAM: 
+      ast_appendf(b, "(program %d", n->as.program.count);
+      ast_list_render(b, n->as.program.statements, n->as.program.count);
+      ast_append(b, ")");
+      break;
+    case NODE_LITERAL:
+      switch (n->as.literal.literalType) {
+        case TOKEN_INTEGER_LITERAL: ast_appendf(b, "(lit int %d)", n->as.literal.ival); break;
+        case TOKEN_DOUBLE_LITERAL:  ast_appendf(b, "(lit double %g)", n->as.literal.dval); break;
+        case TOKEN_CHAR_LITERAL:    ast_appendf(b, "(lit char '%c')", n->as.literal.cval); break;
+        case TOKEN_STRING_LITERAL:  ast_appendf(b, "(lit string \"%s\")", n->as.literal.sval); break;
+        default:                    ast_append(b, "(lit ?)"); break;
+      }
+      break;
+    case NODE_VARIABLE:
+      ast_appendf(b, "(var %s)", n->as.variable.name);
+      break;
+    case NODE_ASSIGN:
+      ast_appendf(b, "(assign %s %s", token_type_name(n->as.assign.op), n->as.assign.target);
+      ast_append(b, " ");
+      ast_render(b, n->as.assign.value);
+      ast_append(b, ")");
+      break;
+    case NODE_BINARY:
+      ast_appendf(b, "(bin %s ", token_type_name(n->as.binary.op));
+      ast_render(b, n->as.binary.left);
+      ast_append(b, " ");
+      ast_render(b, n->as.binary.right);
+      ast_append(b, ")");
+      break;
+    case NODE_UNARY:
+      ast_appendf(b, "(unary %s", n->as.unary.postfix ? "post" : "pre");
+      ast_appendf(b, " %s ", token_type_name(n->as.unary.op));
+      ast_render(b, n->as.unary.right);
+      ast_append(b, ")");
+      break;
+    case NODE_STATEMENT:
+      ast_append(b, "(stmt ");
+      ast_render(b, n->as.statement.expression);
+      ast_append(b, ")");
+      break;
+    case NODE_RETURN:
+      ast_append(b, "(return");
+      if (n->as.return_stmt.value) { ast_append(b, " "); ast_render(b, n->as.return_stmt.value); }
+      ast_append(b, ")");
+      break;
+    case NODE_BREAK:    ast_append(b, "(break)"); break;
+    case NODE_CONTINUE: ast_append(b, "(continue)"); break;
+    case NODE_BLOCK:
+      ast_appendf(b, "(block %d", n->as.block.count);
+      ast_list_render(b, n->as.block.statements, n->as.block.count);
+      ast_append(b, ")");
+      break;
+    case NODE_IF:
+      ast_append(b, "(if ");
+      ast_render(b, n->as.if_stmt.condition);
+      ast_append(b, " ");
+      ast_render(b, n->as.if_stmt.thenBranch);
+      if (n->as.if_stmt.elseBranch) {
+        ast_append(b, " ");
+        ast_render(b, n->as.if_stmt.elseBranch);
+      }
+      ast_append(b, ")");
+      break;
+    case NODE_WHILE:
+      ast_append(b, "(while ");
+      ast_render(b, n->as.while_stmt.condition);
+      ast_append(b, " ");
+      ast_render(b, n->as.while_stmt.body);
+      ast_append(b, ")");
+      break;
+    case NODE_DO_WHILE:
+      ast_append(b, "(do-while ");
+      ast_render(b, n->as.while_stmt.body);
+      ast_append(b, " ");
+      ast_render(b, n->as.while_stmt.condition);
+      ast_append(b, ")");
+      break;
+    case NODE_SWITCH:
+      ast_append(b, "(switch ");
+      ast_render(b, n->as.switch_stmt.condition);
+      ast_list_render(b, n->as.switch_stmt.cases, n->as.switch_stmt.count);
+      ast_append(b, ")");
+      break;
+    case NODE_CASE:
+      ast_append(b, n->as.case_stmt.is_default ? "(default" : "(case");
+      if (n->as.case_stmt.expression) {
+        ast_append(b, " ");
+        ast_render(b, n->as.case_stmt.expression);
+      }
+      ast_list_render(b, n->as.case_stmt.statements, n->as.case_stmt.count);
+      ast_append(b, ")");
+      break;
+    case NODE_FOR:
+      ast_append(b, "(for ");
+      ast_render(b, n->as.for_stmt.init);
+      ast_append(b, " ");
+      ast_render(b, n->as.for_stmt.condition);
+      ast_append(b, " ");
+      ast_render(b, n->as.for_stmt.update);
+      ast_append(b, " ");
+      ast_render(b, n->as.for_stmt.body);
+      ast_append(b, ")");
+      break;
+  }
+}
+
+bool ast_to_string(const AstNode *node, char *out, u32 size) {
+  if (size == 0) return false;
+  AstBuf b = { out, size, 0, false };
+  ast_render(&b, node);
+  b.buf[b.pos] = '\0';
+  return !b.truncated;
 }

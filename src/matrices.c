@@ -1,6 +1,6 @@
-#include "../include/matrices.h"
+#include "matrices.h"
 
-const State letter_dfa[][53] = {
+const State letter_dfa[][54] = {
   [0] = {
     {ACTION_NONE, .payload.c = 'a', 1}, {ACTION_NONE, .payload.c = 'b', 1}, {ACTION_NONE, .payload.c = 'c', 1},
     {ACTION_NONE, .payload.c = 'd', 1}, {ACTION_NONE, .payload.c = 'e', 1}, {ACTION_NONE, .payload.c = 'f', 1},
@@ -19,7 +19,7 @@ const State letter_dfa[][53] = {
     {ACTION_NONE, .payload.c = 'P', 1}, {ACTION_NONE, .payload.c = 'Q', 1}, {ACTION_NONE, .payload.c = 'R', 1},
     {ACTION_NONE, .payload.c = 'S', 1}, {ACTION_NONE, .payload.c = 'T', 1}, {ACTION_NONE, .payload.c = 'U', 1}, 
     {ACTION_NONE, .payload.c = 'V', 1}, {ACTION_NONE, .payload.c = 'W', 1}, {ACTION_NONE, .payload.c = 'X', 1},
-    {ACTION_NONE, .payload.c = 'Y', 1}, {ACTION_NONE, .payload.c = 'Z', 1},
+    {ACTION_NONE, .payload.c = 'Y', 1}, {ACTION_NONE, .payload.c = 'Z', 1}, {ACTION_NONE, .payload.c = '_', 1},
     {ACTION_REJECT, .payload.token_type = TOKEN_ERROR, -1}
   },
   [1] = {

@@ -1,10 +1,10 @@
-#include "../include/common.h"
-#include "../include/lexer.h"
+#include "common.h"
+#include "lexer.h"
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
-#include "../include/parser.h"
-#include "../include/arena.h"
+#include "parser.h"
+#include "arena.h"
 
 // presedence
 typedef enum presedence {
@@ -152,29 +152,46 @@ static void error_at_current(const char*);
 static void error_at_previous(const char*);
 static void sync();
 
-bool compile(const char* source) {
+AstNode* compile(const char* source) {
   init_lexer();
   init_scan(source);
-  perm_arena = arena_create(MiB(64));
   if (perm_arena == NULL) {
-    fprintf(stderr, "Error: Out of memory.");
-    return false;
+    perm_arena = arena_create(MiB(64));
+    if (perm_arena == NULL) { fprintf(stderr, "Error: Out of memory.\n"); return NULL; }
   }
+  else arena_clear(perm_arena);
   parser.hadError = false;
   parser.panicMode = false;
   parser.source = source;
 
   advance();
 
+  AstNode *root = make_node(perm_arena, NODE_PROGRAM, 0);
+  root->as.program.capacity = 256;
+  root->as.program.statements = PUSH_ARRAY(perm_arena, AstNode*, 256);
+  root->as.program.count = 0;
+
   while (!match(TOKEN_EOF)) {
     parser.panicMode = false;
-    parse_statement();
+    AstNode *stmt = parse_statement();
+    if (stmt != NULL) {
+      if (root->as.program.count == root->as.program.capacity) {
+        AstNode **n = grow_array(perm_arena, root->as.program.statements, &root->as.program.capacity);
+        if (n == NULL) { error_at_current("Parser: too many statements."); break; }
+        root->as.program.statements = n;
+      }
+      root->as.program.statements[root->as.program.count++] = stmt;
+    }
     if (parser.panicMode) sync();
   }
-  bool result = !parser.hadError;
-  arena_destroy(perm_arena);
-  perm_arena = NULL;
-  return result;
+
+  if (parser.hadError) {
+    arena_destroy(perm_arena);
+    perm_arena = NULL;
+    return NULL; // false
+  }
+
+  return root; // true
 }
 
 static void advance() {
@@ -694,7 +711,7 @@ static AstNode* unary() {
   AstNode* right = parse_presedence(PREC_UNARY);
   AstNode* n = make_node(perm_arena, NODE_UNARY, line);
   n->as.unary.op = op;
-  n->as.unary.postfix = true;
+  n->as.unary.postfix = false;
   n->as.unary.right = right;
   return n;
 }
@@ -740,6 +757,7 @@ static AstNode* postfix(AstNode* left) {
   TokenType op = parser.previous.type;
   AstNode *n = make_node(perm_arena, NODE_UNARY, line);
   n->as.unary.op = op;
+  n->as.unary.postfix = true;
   n->as.unary.right = left;
   return n;
 }

@@ -1,17 +1,20 @@
 #ifndef PARSER_H
 #define PARSER_H
 
-#include "./common.h"
-#include "./lexer.h"
+#include "common.h"
+#include "lexer.h"
 
 typedef enum nodetype {
+  // program level
+  NODE_PROGRAM,
+  // pratt nodes
   NODE_LITERAL,
   NODE_VARIABLE,
   NODE_ASSIGN,
   NODE_BINARY,
   NODE_UNARY,
   NODE_STATEMENT,
-  // non pratt nodes
+  // other nodes
   NODE_RETURN,
   NODE_BREAK,
   NODE_CONTINUE,
@@ -30,6 +33,12 @@ struct AstNode {
   NodeType type;
   i32 line;
   union {
+    struct {
+      AstNode** statements;
+      i32 count;
+      i32 capacity;
+    } program;
+
     struct {
       TokenType literalType;
       union {
@@ -109,6 +118,6 @@ struct AstNode {
   } as;
 };
 
-bool compile(const char*);
+AstNode* compile(const char*);
 
 #endif
