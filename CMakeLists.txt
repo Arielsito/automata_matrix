@@ -40,6 +40,7 @@ if (BUILD_TESTING)
     # test/parser_tests/parser_rejection_tests.c # the error prints are also in the test output because of the stderr
     test/parser_tests/parser_line_tests.c
     test/parser_tests/parser_stream_tests.c
+    test/parser_tests/parser_declaration_tests.c
   )
 
   target_link_libraries(unit_tests compiler_core ${CRITERION_LIBRARIES})
