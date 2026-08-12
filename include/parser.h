@@ -25,9 +25,16 @@ typedef enum nodetype {
   NODE_WHILE,
   NODE_DO_WHILE,
   NODE_FOR,
+  NODE_DECL,
 } NodeType;
 
 typedef struct AstNode AstNode;
+
+typedef struct Declarator {
+  i32 ptr_depth;
+  char *name;
+  AstNode *init;
+} Declarator;
 
 struct AstNode {
   NodeType type;
@@ -43,6 +50,7 @@ struct AstNode {
       TokenType literalType;
       union {
         i32 ival;
+        f32 fval;
         f64 dval;
         char cval;
         char* sval;
@@ -115,6 +123,12 @@ struct AstNode {
       AstNode* update;
       AstNode* body;
     } for_stmt;
+
+    struct {
+      TokenType type;
+      Declarator *declarators;
+      i32 count;
+    } decl;
   } as;
 };
 

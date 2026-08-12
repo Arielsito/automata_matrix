@@ -31,12 +31,24 @@ typedef struct {
   Presedence p;
 } ParseRule;
 
-static AstNode** grow_array(Arena *arena, AstNode **arr, i32 *cap) {
+static void* grow_array(Arena *arena, void *arr, i32 *cap, u64 elem_size) {
   *cap *= 2;
   if (*cap > 1 << 20) return NULL;
-  AstNode **new = PUSH_ARRAY(arena, AstNode*, *cap);
-  memcpy(new, arr, (*cap / 2) * sizeof(AstNode*));
+  void *new = PUSH_ARRAY(arena, char, (u64)(*cap) * elem_size);
+  memcpy(new, arr, (u64)(*cap / 2) * elem_size);
   return new;
+}
+
+static bool is_type_token(TokenType t) {
+  switch (t) {
+    case TOKEN_INT:
+    case TOKEN_FLOAT:
+    case TOKEN_DOUBLE:
+    case TOKEN_CHAR:
+      return true;
+    default:
+      return false;
+  }
 }
 
 // AST functions
@@ -60,6 +72,7 @@ static AstNode* parse_case();
 static AstNode* parse_while();
 static AstNode* parse_do_while();
 static AstNode* parse_for();
+static AstNode* parse_decl();
 static AstNode* parse_expression_stmt();
 
 // pratt parser for math expressions
@@ -176,7 +189,7 @@ AstNode* compile(const char* source) {
     AstNode *stmt = parse_statement();
     if (stmt != NULL) {
       if (root->as.program.count == root->as.program.capacity) {
-        AstNode **n = grow_array(perm_arena, root->as.program.statements, &root->as.program.capacity);
+        AstNode **n = grow_array(perm_arena, root->as.program.statements, &root->as.program.capacity, sizeof(AstNode*));
         if (n == NULL) { error_at_current("Parser: too many statements."); break; }
         root->as.program.statements = n;
       }
@@ -320,6 +333,10 @@ static AstNode* parse_statement() {
   if (match(TOKEN_WHILE)) return parse_while();
   if (match(TOKEN_DO)) return parse_do_while();
   if (match(TOKEN_FOR)) return parse_for();
+  if (is_type_token(parser.current.type)) {
+    advance();
+    return parse_decl();
+  }
 
   return parse_expression_stmt();
 }
@@ -347,7 +364,7 @@ static AstNode* parse_block() {
     }
     if (stmt != NULL) {
       if (n->as.block.count == n->as.block.capacity) {
-        AstNode **n_arr = grow_array(perm_arena, n->as.block.statements, &n->as.block.capacity);
+        AstNode **n_arr = grow_array(perm_arena, n->as.block.statements, &n->as.block.capacity, sizeof(AstNode*));
         if (n_arr == NULL) {
           error_at_current("Parser: too many statements.");
           return NULL;
@@ -417,7 +434,7 @@ static AstNode* parse_switch() {
         parser.current.type != TOKEN_EOF
     ) {
       if (count == cap) {
-        AstNode **n_arr = grow_array(perm_arena, cases, &cap);
+        AstNode **n_arr = grow_array(perm_arena, cases, &cap, sizeof(AstNode*));
         if (n_arr == NULL) {
           error_at_current("Parser: too many cases.");
           return NULL;
@@ -461,7 +478,7 @@ static AstNode* parse_case() {
       parser.current.type != TOKEN_EOF
   ) {
     if (count == cap) {
-      AstNode **n_arr = grow_array(perm_arena, statements, &cap);
+      AstNode **n_arr = grow_array(perm_arena, statements, &cap, sizeof(AstNode*));
       if (n_arr == NULL) {
         error_at_current("Parser: too many statements.");
         return NULL;
@@ -512,9 +529,9 @@ static AstNode* parse_for() {
 
   // for(;;) -> expressions are optional
   AstNode *init = NULL;
-  if (parser.current.type != TOKEN_SEMICOLON)
+  if (parser.current.type != TOKEN_SEMICOLON) {
     init = parse_expression_stmt();
-  else
+  } else 
     advance();
 
   AstNode *condition = NULL;
@@ -534,6 +551,53 @@ static AstNode* parse_for() {
   n->as.for_stmt.condition = condition;
   n->as.for_stmt.update = update;
   n->as.for_stmt.body = body;
+  return n;
+}
+
+static AstNode* parse_decl() {
+  i32 line = parser.previous.line;
+  TokenType type = parser.previous.type;
+
+  i32 cap = 8;
+  Declarator *list = PUSH_ARRAY(perm_arena, Declarator, cap);
+  i32 count = 0;
+
+  do {
+    // parse pointers
+    i32 depth = 0;
+    while (match(TOKEN_STAR)) depth++;
+
+    // identifiers
+    consume(TOKEN_IDENTIFIER, "Parser: Expected variable name.");
+    char *name = PUSH_ARRAY(perm_arena, char, parser.previous.length + 1);
+    memcpy(name, parser.previous.start, parser.previous.length);
+    name[parser.previous.length] = '\0';
+
+    // if initialized
+    AstNode *init = NULL;
+    if (match(TOKEN_EQUAL)) init = parse_expression();
+
+    if (count == cap) {
+      Declarator *n_list = grow_array(perm_arena, list, &cap, sizeof(Declarator));
+      if (n_list == NULL) {
+        error_at_current("Parser: too many declarators.");
+        return NULL;
+      }
+      list = n_list;
+    }
+
+    list[count].ptr_depth = depth;
+    list[count].name = name;
+    list[count].init = init;
+    count++;
+  } while(match(TOKEN_COMMA));
+
+  consume(TOKEN_SEMICOLON, "Parser: Expected ';' after declaration.");
+
+  AstNode *n = make_node(perm_arena, NODE_DECL, line);
+  n->as.decl.type = type;
+  n->as.decl.declarators = list;
+  n->as.decl.count = count;
   return n;
 }
 

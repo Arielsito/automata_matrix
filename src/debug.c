@@ -202,6 +202,19 @@ static void ast_render(AstBuf *b, const AstNode *n) {
       ast_render(b, n->as.for_stmt.body);
       ast_append(b, ")");
       break;
+    case NODE_DECL:
+      ast_appendf(b, "(decl %s", token_type_name(n->as.decl.type));
+      for (i32 i = 0; i < n->as.decl.count; i++) {
+        Declarator *d = &n->as.decl.declarators[i];
+        ast_append(b, " (");
+        for (i32 p = 0; p < d->ptr_depth; p++) ast_append(b, "*");
+        if (d->ptr_depth > 0) ast_append(b, " ");
+        ast_appendf(b, "%s", d->name);
+        if (d->init) { ast_append(b, " "); ast_render(b, d->init); }
+        ast_append(b, ")");
+      }
+      ast_append(b, ")");
+      break;
   }
 }
 
