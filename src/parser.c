@@ -668,10 +668,34 @@ static TypeBase parse_type_specifier() {
   TypeBase t = { TOKEN_INT, false, false, false, false };
   for (;;) {
     switch (parser.previous.type) {
-      case TOKEN_SHORT:       t.is_short = true; break;
-      case TOKEN_LONG:        t.is_long = true; break;
-      case TOKEN_SIGNED:      t.is_signed = true; break;
-      case TOKEN_UNSIGNED:    t.is_unsigned = true; break;
+      case TOKEN_SIGNED:
+        if (t.is_signed) {
+          error_at_previous("Parser: Duplicate 'signed' specifier.");
+          return t;
+        }
+        t.is_signed = true;
+        break;
+      case TOKEN_UNSIGNED:
+        if (t.is_unsigned) {
+          error_at_previous("Parser: Duplicate 'unsigned' specifier.");
+          return t;
+        }
+        t.is_unsigned = true;
+        break;
+      case TOKEN_SHORT:
+        if (t.is_short) {
+          error_at_previous("Parser: Duplicate 'short' specifier.");
+          return t;
+        }
+        t.is_short = true;
+        break;
+      case TOKEN_LONG:
+        if (t.is_long) {
+          error_at_previous("Parser: Duplicate 'long' specifier.");
+          return t;
+        }
+        t.is_long = true;
+        break;
       case TOKEN_INT:
       case TOKEN_FLOAT:
       case TOKEN_DOUBLE:

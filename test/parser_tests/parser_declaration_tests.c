@@ -1,4 +1,5 @@
 #include <criterion/criterion.h>
+#include <criterion/internal/test.h>
 #include "parser_util.h"
 
 TestSuite(parser_decl, .init = NULL);
@@ -124,6 +125,10 @@ Test(parser_decl, short_alone) {
 
 Test(parser_decl, unsigned_char) {
   assert_ast("unsigned char c;", "(program 1 (decl UNSIGNED CHAR (c)))");
+}
+
+Test(parser_decl, long_long) {
+  assert_parse_fails("long long x;");
 }
 
 Test(parser_decl, unsigned_long) {
