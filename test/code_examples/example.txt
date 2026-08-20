@@ -16,7 +16,7 @@ int main(void) {
 
   // Una comparacion simple
   if(a >= b){
-    a = '//';
+    a = '\\';
   } else {
 
   }
