@@ -32,6 +32,14 @@ typedef enum nodetype {
 
 typedef struct AstNode AstNode;
 
+typedef struct TypeBase {
+  TokenType base;
+  bool is_unsigned;
+  bool is_signed;
+  bool is_short;
+  bool is_long;
+} TypeBase;
+
 typedef struct Declarator {
   i32 ptr_depth;
   char *name;
@@ -134,7 +142,7 @@ struct AstNode {
     } for_stmt;
 
     struct {
-      TokenType type;
+      TypeBase type;
       Declarator *declarators;
       i32 count;
     } decl;

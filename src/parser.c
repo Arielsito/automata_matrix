@@ -41,6 +41,10 @@ static void* grow_array(Arena *arena, void *arr, i32 *cap, u64 elem_size) {
 
 static bool is_type_token(TokenType t) {
   switch (t) {
+    case TOKEN_SHORT:
+    case TOKEN_LONG:
+    case TOKEN_SIGNED:
+    case TOKEN_UNSIGNED:
     case TOKEN_INT:
     case TOKEN_FLOAT:
     case TOKEN_DOUBLE:
@@ -74,6 +78,7 @@ static AstNode* parse_do_while();
 static AstNode* parse_for();
 static AstNode* parse_decl();
 static AstNode* parse_init_list();
+static TypeBase parse_type_specifier();
 static AstNode* parse_expression_stmt();
 
 // pratt parser for math expressions
@@ -559,7 +564,7 @@ static AstNode* parse_for() {
 
 static AstNode* parse_decl() {
   i32 line = parser.previous.line;
-  TokenType type = parser.previous.type;
+  TypeBase type = parse_type_specifier();
 
   i32 cap = 8;
   Declarator *list = PUSH_ARRAY(perm_arena, Declarator, cap);
@@ -657,6 +662,28 @@ static AstNode* parse_init_list() {
   n->as.init_list.elements = elements;
   n->as.init_list.count = count;
   return n;
+}
+
+static TypeBase parse_type_specifier() {
+  TypeBase t = { TOKEN_INT, false, false, false, false };
+  for (;;) {
+    switch (parser.previous.type) {
+      case TOKEN_SHORT:       t.is_short = true; break;
+      case TOKEN_LONG:        t.is_long = true; break;
+      case TOKEN_SIGNED:      t.is_signed = true; break;
+      case TOKEN_UNSIGNED:    t.is_unsigned = true; break;
+      case TOKEN_INT:
+      case TOKEN_FLOAT:
+      case TOKEN_DOUBLE:
+      case TOKEN_CHAR:
+        t.base = parser.previous.type;
+        break;
+      default:
+        return t;
+    }
+    if (!is_type_token(parser.current.type)) return t;
+    advance();
+  }
 }
 
 // pratt functions
