@@ -79,8 +79,6 @@ struct dfa {
   i32 cols;
 };
 
-typedef struct scanner Scanner;
-
 void init_lexer();
 void init_scan(const char*);
 Token scan_token();
