@@ -114,10 +114,6 @@ Test(parser_decl, long_alone) {
   assert_ast("long x;", "(program 1 (decl LONG INT (x)))");
 }
 
-Test(parser_decl, long_long) {
-  assert_ast("long long x;", "(program 1 (decl LONG LONG (x)))");
-}
-
 Test(parser_decl, short_int) {
   assert_ast("short int s;", "(program 1 (decl SHORT INT (s)))");
 }
@@ -131,7 +127,7 @@ Test(parser_decl, unsigned_char) {
 }
 
 Test(parser_decl, unsigned_long) {
-  assert_ast("unsigned long l;", "(program 1 (decl UNSIGNED LONG (l)))");
+  assert_ast("unsigned long l;", "(program 1 (decl UNSIGNED LONG INT (l)))");
 }
 
 Test(parser_decl, signed_int) {

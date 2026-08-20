@@ -1,4 +1,5 @@
 #include "debug.h"
+#include "lexer.h"
 #include "parser.h"
 #include <stdarg.h>
 #include <stddef.h>
@@ -87,6 +88,14 @@ static void ast_appendf(AstBuf *b, const char *fmt, ...) {
 }
 
 static void ast_render(AstBuf*, const AstNode*);
+
+static void render_type(AstBuf *b, TypeBase t) {
+  if (t.is_signed) ast_appendf(b, "%s ", token_type_name(TOKEN_SIGNED));
+  if (t.is_unsigned) ast_appendf(b, "%s ", token_type_name(TOKEN_UNSIGNED));
+  if (t.is_short) ast_appendf(b, "%s ", token_type_name(TOKEN_SHORT));
+  if (t.is_long) ast_appendf(b, "%s ", token_type_name(TOKEN_LONG));
+  ast_appendf(b, "%s", token_type_name(t.base));
+}
 
 static void ast_list_render(AstBuf *b, AstNode **items, i32 count) {
   for (i32 i = 0; i < count; i++) {
@@ -211,7 +220,8 @@ static void ast_render(AstBuf *b, const AstNode *n) {
       ast_append(b, ")");
       break;
     case NODE_DECL:
-      ast_appendf(b, "(decl %s", token_type_name(n->as.decl.type));
+      ast_append(b, "(decl ");
+      render_type(b, n->as.decl.type);
       for (i32 i = 0; i < n->as.decl.count; i++) {
         Declarator *d = &n->as.decl.declarators[i];
         ast_append(b, " (");
