@@ -14,6 +14,7 @@ typedef enum nodetype {
   NODE_BINARY,
   NODE_UNARY,
   NODE_STATEMENT,
+  NODE_INDEX,
   // other nodes
   NODE_RETURN,
   NODE_BREAK,
@@ -26,6 +27,7 @@ typedef enum nodetype {
   NODE_DO_WHILE,
   NODE_FOR,
   NODE_DECL,
+  NODE_INIT_LIST,
 } NodeType;
 
 typedef struct AstNode AstNode;
@@ -33,6 +35,8 @@ typedef struct AstNode AstNode;
 typedef struct Declarator {
   i32 ptr_depth;
   char *name;
+  AstNode **arr_dims;
+  i32 arr_rank_counts;
   AstNode *init;
 } Declarator;
 
@@ -62,7 +66,7 @@ struct AstNode {
     } variable;
 
     struct {
-      char* target;
+      AstNode* target;
       TokenType op;
       AstNode* value;
     } assign;
@@ -78,6 +82,11 @@ struct AstNode {
       AstNode* right;
       bool postfix;
     } unary;
+
+    struct {
+      AstNode *object;
+      AstNode *index;
+    } index;
 
     struct {
       AstNode* expression;
@@ -129,6 +138,11 @@ struct AstNode {
       Declarator *declarators;
       i32 count;
     } decl;
+
+    struct {
+      AstNode **elements;
+      i32 count;
+    } init_list;
   } as;
 };
 

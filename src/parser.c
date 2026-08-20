@@ -73,6 +73,7 @@ static AstNode* parse_while();
 static AstNode* parse_do_while();
 static AstNode* parse_for();
 static AstNode* parse_decl();
+static AstNode* parse_init_list();
 static AstNode* parse_expression_stmt();
 
 // pratt parser for math expressions
@@ -111,6 +112,8 @@ static ParseRule rules[] = {
 
   [TOKEN_PLUS_PLUS] = { unary, postfix, PREC_UNARY },
   [TOKEN_MINUS_MINUS] = { unary, postfix, PREC_UNARY },
+
+  [TOKEN_LEFT_BRACKET] = { NULL, postfix, PREC_CALL },
 
   [TOKEN_EQUAL_EQUAL] = { NULL, binary, PREC_EQUAL },
   [TOKEN_NOT_EQUAL] = { NULL, binary, PREC_EQUAL },
@@ -573,9 +576,34 @@ static AstNode* parse_decl() {
     memcpy(name, parser.previous.start, parser.previous.length);
     name[parser.previous.length] = '\0';
 
+    // parse arrays
+    AstNode **arr_dims = NULL;
+    i32 arr_rank_counts = 0;
+    if (match(TOKEN_LEFT_BRACKET)) {
+      i32 dcap = 4;
+      arr_dims = PUSH_ARRAY(perm_arena, AstNode*, dcap);
+      do {
+        if (arr_rank_counts == dcap) {
+          AstNode **n_dims = grow_array(perm_arena, arr_dims, &dcap, sizeof(AstNode*));
+          if (n_dims == NULL) {
+            error_at_current("Parser: Too many array dimensions.");
+            return NULL;
+          }
+          arr_dims = n_dims;
+        }
+        AstNode *size = NULL;
+        if (parser.current.type != TOKEN_RIGHT_BRACKET) size = parse_expression();
+        arr_dims[arr_rank_counts++] = size;
+        consume(TOKEN_RIGHT_BRACKET, "Parser: Expected ']' after array size.");
+      } while(match(TOKEN_LEFT_BRACKET));
+    }
+
     // if initialized
     AstNode *init = NULL;
-    if (match(TOKEN_EQUAL)) init = parse_expression();
+    if (match(TOKEN_EQUAL)) {
+      if (match(TOKEN_LEFT_BRACE)) init = parse_init_list();
+      else init = parse_expression();
+    }
 
     if (count == cap) {
       Declarator *n_list = grow_array(perm_arena, list, &cap, sizeof(Declarator));
@@ -588,6 +616,8 @@ static AstNode* parse_decl() {
 
     list[count].ptr_depth = depth;
     list[count].name = name;
+    list[count].arr_dims = arr_dims;
+    list[count].arr_rank_counts = arr_rank_counts;
     list[count].init = init;
     count++;
   } while(match(TOKEN_COMMA));
@@ -598,6 +628,34 @@ static AstNode* parse_decl() {
   n->as.decl.type = type;
   n->as.decl.declarators = list;
   n->as.decl.count = count;
+  return n;
+}
+
+static AstNode* parse_init_list() {
+  i32 line = parser.previous.line;
+  i32 cap = 8;
+  AstNode **elements = PUSH_ARRAY(perm_arena, AstNode*, cap);
+  i32 count = 0;
+
+  if (parser.current.type != TOKEN_RIGHT_BRACE) {
+    do {
+      if (count == cap) {
+        AstNode **n_arr = grow_array(perm_arena, elements, &cap, sizeof(AstNode*));
+        if (n_arr == NULL) {
+          error_at_current("Parser: too many initializers.");
+          return NULL;
+        }
+        elements = n_arr;
+      }
+      elements[count++] = match(TOKEN_LEFT_BRACE) ? parse_init_list() : parse_expression();
+    } while (match(TOKEN_COMMA));
+  }
+
+  consume(TOKEN_RIGHT_BRACE, "Parser: Expected '}' after initializer list.");
+
+  AstNode *n = make_node(perm_arena, NODE_INIT_LIST, line);
+  n->as.init_list.elements = elements;
+  n->as.init_list.count = count;
   return n;
 }
 
@@ -800,7 +858,7 @@ static AstNode* assign(AstNode* target) {
   if (target == NULL) return NULL;
   i32 line = parser.previous.line;
   TokenType op = parser.previous.type;
-  if (target->type != NODE_VARIABLE) {
+  if (target->type != NODE_VARIABLE && target->type != NODE_INDEX) {
     error_at_previous("Parser: Objective of assignment invalid.");
     return NULL;
   }
@@ -809,7 +867,7 @@ static AstNode* assign(AstNode* target) {
   if (parser.panicMode || val == NULL) return NULL;
 
   AstNode *n = make_node(perm_arena, NODE_ASSIGN, line);
-  n->as.assign.target = target->as.variable.name;
+  n->as.assign.target = target;
   n->as.assign.op = op;
   n->as.assign.value = val;
   return n;
@@ -820,6 +878,16 @@ static AstNode* postfix(AstNode* left) {
   i32 line = parser.previous.line;
   TokenType op = parser.previous.type;
   AstNode *n = make_node(perm_arena, NODE_UNARY, line);
+
+  if (op == TOKEN_LEFT_BRACKET) {
+    AstNode *index = parse_expression();
+    consume(TOKEN_RIGHT_BRACKET, "Parser: Expected ']' after array index.");
+    AstNode *n = make_node(perm_arena, NODE_INDEX, line);
+    n->as.index.object = left;
+    n->as.index.index = index;
+    return n;
+  }
+
   n->as.unary.op = op;
   n->as.unary.postfix = true;
   n->as.unary.right = left;

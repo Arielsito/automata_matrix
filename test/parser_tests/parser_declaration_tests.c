@@ -85,7 +85,7 @@ Test(parser_decl, multiple_decl_statements) {
 Test(parser_decl, declaration_and_statement_mix) {
   assert_ast("int a = 2;\na = a * 2;",
       "(program 2 (decl INT (a (lit int 2)))"
-      " (stmt (assign EQUAL a (bin STAR (var a) (lit int 2)))))");
+      " (stmt (assign EQUAL (var a) (bin STAR (var a) (lit int 2)))))");
 }
 
 Test(parser_decl, declaration_inside_block) {
@@ -97,7 +97,7 @@ Test(parser_decl, declaration_inside_while) {
   assert_ast("while (a) { int t = a; a = a - 1; }",
       "(program 1 (while (var a)"
       " (block 2 (decl INT (t (var a)))"
-      " (stmt (assign EQUAL a (bin MINUS (var a) (lit int 1)))))))");
+      " (stmt (assign EQUAL (var a) (bin MINUS (var a) (lit int 1)))))))");
 }
 
 // type prefixes
