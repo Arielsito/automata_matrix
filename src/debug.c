@@ -116,7 +116,8 @@ static void ast_render(AstBuf *b, const AstNode *n) {
       ast_appendf(b, "(var %s)", n->as.variable.name);
       break;
     case NODE_ASSIGN:
-      ast_appendf(b, "(assign %s %s", token_type_name(n->as.assign.op), n->as.assign.target);
+      ast_appendf(b, "(assign %s ", token_type_name(n->as.assign.op));
+      ast_render(b, n->as.assign.target);
       ast_append(b, " ");
       ast_render(b, n->as.assign.value);
       ast_append(b, ")");
@@ -132,6 +133,13 @@ static void ast_render(AstBuf *b, const AstNode *n) {
       ast_appendf(b, "(unary %s", n->as.unary.postfix ? "post" : "pre");
       ast_appendf(b, " %s ", token_type_name(n->as.unary.op));
       ast_render(b, n->as.unary.right);
+      ast_append(b, ")");
+      break;
+    case NODE_INDEX:
+      ast_append(b, "(index ");
+      ast_render(b, n->as.index.object);
+      ast_append(b, " ");
+      ast_render(b, n->as.index.index);
       ast_append(b, ")");
       break;
     case NODE_STATEMENT:
@@ -210,10 +218,25 @@ static void ast_render(AstBuf *b, const AstNode *n) {
         for (i32 p = 0; p < d->ptr_depth; p++) ast_append(b, "*");
         if (d->ptr_depth > 0) ast_append(b, " ");
         ast_appendf(b, "%s", d->name);
+        if (d->arr_rank_counts > 0) {
+          for (i32 r = 0; r < d->arr_rank_counts; r++) {
+            ast_append(b, "[");
+            if (d->arr_dims[r]) ast_render(b, d->arr_dims[r]);
+            ast_append(b, "]");
+          }
+        }
         if (d->init) { ast_append(b, " "); ast_render(b, d->init); }
         ast_append(b, ")");
       }
       ast_append(b, ")");
+      break;
+    case NODE_INIT_LIST:
+      ast_append(b, "{");
+      for (i32 i = 0; i < n->as.init_list.count; i++) {
+        ast_append(b, " ");
+        ast_render(b, n->as.init_list.elements[i]);
+      }
+      ast_append(b, " }");
       break;
   }
 }

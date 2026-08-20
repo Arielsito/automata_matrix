@@ -41,6 +41,7 @@ if (BUILD_TESTING)
     test/parser_tests/parser_line_tests.c
     test/parser_tests/parser_stream_tests.c
     test/parser_tests/parser_declaration_tests.c
+    test/parser_tests/parser_array_tests.c
   )
 
   target_link_libraries(unit_tests compiler_core ${CRITERION_LIBRARIES})
