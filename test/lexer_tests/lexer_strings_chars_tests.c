@@ -72,9 +72,9 @@ typedef struct {
 
 ParameterizedTestParameters(lexer_s_c, string_errors) {
   static const ErrCase cases[] = {
-    { "\"a", "Lexer: unterminated string literal." },
-    { "\"", "Lexer: unterminated string literal." },
-    { "\"a\nb\"", "Lexer: unterminated string literal." },
+    { "\"a", "Lexer: Unterminated string literal." },
+    { "\"", "Lexer: Unterminated string literal." },
+    { "\"a\nb\"", "Lexer: Unterminated string literal." },
   };
   return cr_make_param_array(ErrCase, cases,
       sizeof(cases) / sizeof(ErrCase)
@@ -95,10 +95,10 @@ ParameterizedTest(ErrCase *tc, lexer_s_c, string_errors) {
 
 ParameterizedTestParameters(lexer_s_c, char_errors) {
   static const ErrCase cases[] = {
-    { "''", "Lexer: unterminated char literal." },
-    { "'ab'", "Lexer: unterminated char literal." },
-    { "'a", "Lexer: unterminated char literal." },
-    { "'", "Lexer: unterminated char literal." },
+    { "''", "Lexer: Unterminated char literal." },
+    { "'ab'", "Lexer: Unterminated char literal." },
+    { "'a", "Lexer: Unterminated char literal." },
+    { "'", "Lexer: Unterminated char literal." },
   };
   return cr_make_param_array(ErrCase, cases,
       sizeof(cases) / sizeof(ErrCase)
@@ -154,7 +154,7 @@ ParameterizedTest(LitStreamCase *tc, lexer_s_c, string_char_streams) {
 Test(lexer_s_c, string_at_eof) {
   Token t = next_token("\"abc\"");
   cr_assert_eq(t.type, TOKEN_STRING_LITERAL,
-      "must not be unterminated (got %d)", t.type
+      "must not be Unterminated (got %d)", t.type
       );
   cr_assert_eq(t.length, 5);
 }

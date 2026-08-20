@@ -89,7 +89,7 @@ Token scan_token() {
   t = run_dfa(&stringLiteral, 0);
   if (t.type != TOKEN_ERROR) return t;
   if (start_pos[0] == '"') {
-    lex_error = "Lexer: unterminated string literal.";
+    lex_error = "Lexer: Unterminated string literal.";
     while (*scanner.current != '\n' && *scanner.current != '\0') scanner.current++;
     return make_token(TOKEN_ERROR);
   }
@@ -99,7 +99,7 @@ Token scan_token() {
   t = run_dfa(&charLiteral, 0);
   if (t.type != TOKEN_ERROR) return t;
   if (start_pos[0] == '\'') {
-    lex_error = "Lexer: unterminated char literal.";
+    lex_error = "Lexer: Unterminated char literal.";
     while (*scanner.current != '\n' && *scanner.current != '\0') scanner.current++;
     return make_token(TOKEN_ERROR);
   }
