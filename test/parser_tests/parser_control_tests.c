@@ -37,12 +37,12 @@ Test(parser_control, if_empty_body_semicolon) {
 
 Test(parser_control, while_loop) {
   assert_ast("while (a < b) a += b;", 
-      "(program 1 (while (bin LESS (var a) (var b)) (stmt (assign PLUS_EQUAL a (var b)))))");
+      "(program 1 (while (bin LESS (var a) (var b)) (stmt (assign PLUS_EQUAL (var a) (var b)))))");
 }
 
 Test(parser_control, while_block) {
   assert_ast("while (a) { a = a - 1; }", 
-      "(program 1 (while (var a) (block 1 (stmt (assign EQUAL a (bin MINUS (var a) (lit int 1)))))))");
+      "(program 1 (while (var a) (block 1 (stmt (assign EQUAL (var a) (bin MINUS (var a) (lit int 1)))))))");
 }
 
 Test(parser_control, do_while) {
@@ -53,11 +53,11 @@ Test(parser_control, do_while) {
 // for
 Test(parser_control, for_full) {
   assert_ast("for (i = 0; i < 5; i++) a = i;", 
-      "(program 1 (for (stmt (assign EQUAL i (lit int 0))) (bin LESS (var i) (lit int 5)) (unary post PLUS_PLUS (var i)) (stmt (assign EQUAL a (var i)))))");
+      "(program 1 (for (stmt (assign EQUAL (var i) (lit int 0))) (bin LESS (var i) (lit int 5)) (unary post PLUS_PLUS (var i)) (stmt (assign EQUAL (var a) (var i)))))");
 }
 
 Test(parser_control, for_infinite) {
-  assert_ast("for (;;) a = 0;", "(program 1 (for nil nil nil (stmt (assign EQUAL a (lit int 0)))))");
+  assert_ast("for (;;) a = 0;", "(program 1 (for nil nil nil (stmt (assign EQUAL (var a) (lit int 0)))))");
 }
 
 // return / break / continue
@@ -85,22 +85,22 @@ Test(parser_control, empty_block) {
 
 Test(parser_control, block_multiple_stmts) {
   assert_ast("{ x = 1; y = 2; }", 
-      "(program 1 (block 2 (stmt (assign EQUAL x (lit int 1))) (stmt (assign EQUAL y (lit int 2)))))");
+      "(program 1 (block 2 (stmt (assign EQUAL (var x) (lit int 1))) (stmt (assign EQUAL (var y) (lit int 2)))))");
 }
 
 // switch
 Test(parser_control, switch_basic) {
   assert_ast("switch(x) { case 1: a = 5; break; }", 
-      "(program 1 (switch (var x) (case (lit int 1) (stmt (assign EQUAL a (lit int 5))) (break))))");
+      "(program 1 (switch (var x) (case (lit int 1) (stmt (assign EQUAL (var a) (lit int 5))) (break))))");
 }
 
 Test(parser_control, switch_fallthrough) {
   assert_ast("switch (x) { case 1: case 2: b = 3; default: c = 0; }", 
-      "(program 1 (switch (var x) (case (lit int 1)) (case (lit int 2) (stmt (assign EQUAL b (lit int 3)))) (default (stmt (assign EQUAL c (lit int 0))))))");
+      "(program 1 (switch (var x) (case (lit int 1)) (case (lit int 2) (stmt (assign EQUAL (var b) (lit int 3)))) (default (stmt (assign EQUAL (var c) (lit int 0))))))");
 }
 
 // nested control flow
 Test(parser_control, nested_control_flow) {
   assert_ast("if (a) { base = 10; } else base = -limit; while (a < b) a += b;", 
-      "(program 2 (if (var a) (block 1 (stmt (assign EQUAL base (lit int 10)))) (stmt (assign EQUAL base (unary pre MINUS (var limit))))) (while (bin LESS (var a) (var b)) (stmt (assign PLUS_EQUAL a (var b)))))");
+      "(program 2 (if (var a) (block 1 (stmt (assign EQUAL (var base) (lit int 10)))) (stmt (assign EQUAL (var base) (unary pre MINUS (var limit))))) (while (bin LESS (var a) (var b)) (stmt (assign PLUS_EQUAL (var a) (var b)))))");
 }

@@ -91,13 +91,13 @@ Test(parser_expr, equality) {
 // assignment
 
 Test(parser_expr, assign_simple) {
-  assert_ast("x = 5;", "(program 1 (stmt (assign EQUAL x (lit int 5))))");
+  assert_ast("x = 5;", "(program 1 (stmt (assign EQUAL (var x) (lit int 5))))");
 }
 
 Test(parser_expr, assign_additive) {
-  assert_ast("x += 1;", "(program 1 (stmt (assign PLUS_EQUAL x (lit int 1))))");
+  assert_ast("x += 1;", "(program 1 (stmt (assign PLUS_EQUAL (var x) (lit int 1))))");
 }
 
 Test(parser_expr, assign_left_assoc_to_var) {
-  assert_ast("x -= y;", "(program 1 (stmt (assign MINUS_EQUAL x (var y))))");
+  assert_ast("x -= y;", "(program 1 (stmt (assign MINUS_EQUAL (var x) (var y))))");
 }

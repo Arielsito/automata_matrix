@@ -13,17 +13,17 @@ Test(parser_stream, two_stmts) {
 
 Test(parser_stream, three_stmts) {
   assert_ast("a = 1; b = 2; c = a + b;", 
-      "(program 3 (stmt (assign EQUAL a (lit int 1))) (stmt (assign EQUAL b (lit int 2))) (stmt (assign EQUAL c (bin PLUS (var a) (var b)))))");
+      "(program 3 (stmt (assign EQUAL (var a) (lit int 1))) (stmt (assign EQUAL (var b) (lit int 2))) (stmt (assign EQUAL (var c) (bin PLUS (var a) (var b)))))");
 }
 
 Test(parser_stream, mixed_control_and_expr) {
   assert_ast("i = 0;\nwhile (i < 3) i++;\nreturn i;",
-      "(program 3 (stmt (assign EQUAL i (lit int 0))) (while (bin LESS (var i) (lit int 3)) (stmt (unary post PLUS_PLUS (var i)))) (return (var i)))");
+      "(program 3 (stmt (assign EQUAL (var i) (lit int 0))) (while (bin LESS (var i) (lit int 3)) (stmt (unary post PLUS_PLUS (var i)))) (return (var i)))");
 }
 
 Test(parser_stream, program_with_block_and_if) {
   assert_ast("x = 1;\nif (x) { y = 2; }\nz = 3;",
-      "(program 3 (stmt (assign EQUAL x (lit int 1))) (if (var x) (block 1 (stmt (assign EQUAL y (lit int 2))))) (stmt (assign EQUAL z (lit int 3))))");
+      "(program 3 (stmt (assign EQUAL (var x) (lit int 1))) (if (var x) (block 1 (stmt (assign EQUAL (var y) (lit int 2))))) (stmt (assign EQUAL (var z) (lit int 3))))");
 }
 
 Test(parser_stream, many_statements) {
@@ -39,7 +39,7 @@ Test(parser_stream, growth_over_capacity) {
   char *e = expected;
   for (u32 i = 0; i < 300; i++) {
     p += sprintf(p, "v%u = %u;", i, i);
-    e += sprintf(e, " (stmt (assign EQUAL v%u (lit int %u)))", i, i);
+    e += sprintf(e, " (stmt (assign EQUAL (var v%u) (lit int %u)))", i, i);
   }
   *e = '\0';
   char full[65536];
