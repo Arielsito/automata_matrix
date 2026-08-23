@@ -77,6 +77,8 @@ static AstNode* parse_while();
 static AstNode* parse_do_while();
 static AstNode* parse_for();
 static AstNode* parse_decl();
+static Declarator* parse_declarator();
+static void declarator_init(Declarator*);
 static AstNode* parse_init_list();
 static TypeBase parse_type_specifier();
 static AstNode* parse_expression_stmt();
@@ -571,44 +573,8 @@ static AstNode* parse_decl() {
   i32 count = 0;
 
   do {
-    // parse pointers
-    i32 depth = 0;
-    while (match(TOKEN_STAR)) depth++;
-
-    // identifiers
-    consume(TOKEN_IDENTIFIER, "Parser: Expected variable name.");
-    char *name = PUSH_ARRAY(perm_arena, char, parser.previous.length + 1);
-    memcpy(name, parser.previous.start, parser.previous.length);
-    name[parser.previous.length] = '\0';
-
-    // parse arrays
-    AstNode **arr_dims = NULL;
-    i32 arr_rank_counts = 0;
-    if (match(TOKEN_LEFT_BRACKET)) {
-      i32 dcap = 4;
-      arr_dims = PUSH_ARRAY(perm_arena, AstNode*, dcap);
-      do {
-        if (arr_rank_counts == dcap) {
-          AstNode **n_dims = grow_array(perm_arena, arr_dims, &dcap, sizeof(AstNode*));
-          if (n_dims == NULL) {
-            error_at_current("Parser: Too many array dimensions.");
-            return NULL;
-          }
-          arr_dims = n_dims;
-        }
-        AstNode *size = NULL;
-        if (parser.current.type != TOKEN_RIGHT_BRACKET) size = parse_expression();
-        arr_dims[arr_rank_counts++] = size;
-        consume(TOKEN_RIGHT_BRACKET, "Parser: Expected ']' after array size.");
-      } while(match(TOKEN_LEFT_BRACKET));
-    }
-
-    // if initialized
-    AstNode *init = NULL;
-    if (match(TOKEN_EQUAL)) {
-      if (match(TOKEN_LEFT_BRACE)) init = parse_init_list();
-      else init = parse_expression();
-    }
+    Declarator *d = parse_declarator();
+    declarator_init(d);
 
     if (count == cap) {
       Declarator *n_list = grow_array(perm_arena, list, &cap, sizeof(Declarator));
@@ -618,13 +584,7 @@ static AstNode* parse_decl() {
       }
       list = n_list;
     }
-
-    list[count].ptr_depth = depth;
-    list[count].name = name;
-    list[count].arr_dims = arr_dims;
-    list[count].arr_rank_counts = arr_rank_counts;
-    list[count].init = init;
-    count++;
+    list[count++] = *d;
   } while(match(TOKEN_COMMA));
 
   consume(TOKEN_SEMICOLON, "Parser: Expected ';' after declaration.");
@@ -634,6 +594,51 @@ static AstNode* parse_decl() {
   n->as.decl.declarators = list;
   n->as.decl.count = count;
   return n;
+}
+
+static Declarator* parse_declarator() {
+  Declarator *d = PUSH_ARRAY(perm_arena, Declarator, 1);
+
+  // pointers
+  d->ptr_depth = 0;
+  while (match(TOKEN_STAR)) d->ptr_depth++;
+
+  // identifiers
+  consume(TOKEN_IDENTIFIER, "Parser: Expected variable name.");
+  d->name = PUSH_ARRAY(perm_arena, char, parser.previous.length + 1);
+  memcpy(d->name, parser.previous.start, parser.previous.length);
+  d->name[parser.previous.length] = '\0';
+
+  d->arr_dims = NULL;
+  d->arr_rank_counts = 0;
+  if (match(TOKEN_LEFT_BRACKET)) {
+    i32 dcap = 4;
+    d->arr_dims = PUSH_ARRAY(perm_arena, AstNode*, dcap);
+    do {
+      if (d->arr_rank_counts == dcap) {
+        AstNode **n_dims = grow_array(perm_arena, d->arr_dims, &dcap, sizeof(AstNode*));
+        if (n_dims == NULL) {
+          error_at_current("Parser: Too many array dimensions.");
+          return NULL;
+        }
+        d->arr_dims = n_dims;
+      }
+      AstNode *size = NULL;
+      if (parser.current.type != TOKEN_RIGHT_BRACKET) size = parse_expression();
+      d->arr_dims[d->arr_rank_counts++] = size;
+      consume(TOKEN_RIGHT_BRACKET, "Parser: Expected ']' after array size.");
+    } while(match(TOKEN_LEFT_BRACKET));
+  }
+
+  d->init = NULL;
+  d->paren = NULL;
+  return d;
+}
+
+static void declarator_init(Declarator *d) {
+  if (match(TOKEN_EQUAL)) {
+    d->init = match(TOKEN_LEFT_BRACE) ? parse_init_list() : parse_expression();
+  }
 }
 
 static AstNode* parse_init_list() {

@@ -46,6 +46,7 @@ typedef struct Declarator {
   AstNode **arr_dims;
   i32 arr_rank_counts;
   AstNode *init;
+  struct Declarator *paren;
 } Declarator;
 
 struct AstNode {
