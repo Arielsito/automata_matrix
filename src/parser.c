@@ -80,7 +80,7 @@ static AstNode* parse_for();
 static AstNode* parse_decl_or_func();
 static Declarator* parse_declarator(bool);
 static void declarator_init(Declarator*);
-static AstNode** parse_param_list(i32*);
+static void parse_param_list(AstNode*);
 static AstNode* parse_init_list();
 static TypeBase parse_type_specifier();
 static AstNode* parse_expression_stmt();
@@ -574,17 +574,24 @@ static AstNode* parse_decl_or_func() {
   if (first == NULL) return NULL;
 
   if (match(TOKEN_LEFT_PAREN)) {
-    i32 pcount = 0;
-    AstNode **params = parse_param_list(&pcount);
-    AstNode *body = NULL;
-    if (match(TOKEN_LEFT_BRACE)) body = parse_block();
-    else consume(TOKEN_SEMICOLON, "Parser: Expected ';' after function prototype.");
     AstNode *n = make_node(perm_arena, NODE_FUNCTION, line);
     n->as.function.type = type;
     n->as.function.name = first->name;
-    n->as.function.params = params;
-    n->as.function.param_count = pcount;
-    n->as.function.body = body;
+    n->as.function.params = NULL;
+    n->as.function.param_count = 0;
+    n->as.function.body = NULL;
+    parse_param_list(n);
+
+    if (parser.current.type == TOKEN_LEFT_BRACE) {
+      for (i32 i = 0; i < n->as.function.param_count; i++) {
+        AstNode *p = n->as.function.params ? n->as.function.params[i] : NULL;
+        bool named = p && p->as.decl.count == 1 && p->as.decl.declarators && p->as.decl.declarators[0].name;
+        if (!named) error_at_current("Parser: Function definition requires named parameters.");
+      }
+    }
+
+    if (match(TOKEN_LEFT_BRACE)) n->as.function.body = parse_block();
+    else consume(TOKEN_SEMICOLON, "Parser: Expected ';' after function prototype.");
     return n;
   }
 
@@ -665,43 +672,46 @@ static void declarator_init(Declarator *d) {
   }
 }
 
-static AstNode** parse_param_list(i32 *c_out) {
+static void parse_param_list(AstNode *fn) {
   i32 cap = 8;
   AstNode **params = PUSH_ARRAY(perm_arena, AstNode*, cap);
   i32 count = 0;
 
-  if (parser.current.type == TOKEN_VOID) advance();
-  else if (parser.current.type != TOKEN_RIGHT_PAREN) {
-    do {
-      advance();
-      TypeBase ptype = parse_type_specifier();
-      Declarator *pd = parse_declarator(false);
-      if (pd == NULL) {
-        *c_out = count;
-        return params;
-      }
-      
-      if (count == cap) {
-        AstNode **n = grow_array(perm_arena, params, &cap, sizeof(AstNode*));
-        if (n == NULL) {
-          error_at_current("Parser: Too many parameters.");
-          *c_out = count;
-          return params;
+  if (parser.current.type != TOKEN_RIGHT_PAREN) {
+    if (parser.current.type == TOKEN_VOID) advance();
+    else {
+      do {
+        if (!is_type_token(parser.current.type)) {
+          error_at_current("Parser: Expected type specifier in parameter list.");
+          while (parser.current.type != TOKEN_RIGHT_PAREN && parser.current.type != TOKEN_EOF) advance();
+          break;
         }
-        params = n;
-      }
-      AstNode *pdecl = make_node(perm_arena, NODE_DECL, parser.current.line);
-      pdecl->as.decl.type = ptype;
-      pdecl->as.decl.declarators = pd;
-      pdecl->as.decl.count = 1;
-      params[count++] = pdecl;
-    } while (match(TOKEN_COMMA));
+        advance();
+        TypeBase ptype = parse_type_specifier();
+        Declarator *pd = NULL;
+        if (parser.current.type == TOKEN_STAR ||
+            parser.current.type == TOKEN_IDENTIFIER ||
+            parser.current.type == TOKEN_LEFT_BRACKET
+            ) pd = parse_declarator(true);
+        if (count == cap) {
+          AstNode **n_params = grow_array(perm_arena, params, &cap, sizeof(AstNode*));
+          if (n_params == NULL) {
+            error_at_current("Parser: Too many parameters.");
+            break;
+          }
+          params = n_params;
+        }
+        AstNode *pdecl = make_node(perm_arena, NODE_DECL, parser.current.line);
+        pdecl->as.decl.type = ptype;
+        pdecl->as.decl.declarators = pd;
+        pdecl->as.decl.count = pd ? 1 : 0;
+        params[count++] = pdecl;
+      } while (match(TOKEN_COMMA));
+    }
   }
-
   consume(TOKEN_RIGHT_PAREN, "Parser: Expected ')' after parameter list.");
-  *c_out = count;
-
-  return params;
+  fn->as.function.params = count ? params : NULL;
+  fn->as.function.param_count = count;
 }
 
 static AstNode* parse_init_list() {
