@@ -28,6 +28,7 @@ typedef enum nodetype {
   NODE_FOR,
   NODE_DECL,
   NODE_INIT_LIST,
+  NODE_FUNCTION,
 } NodeType;
 
 typedef struct AstNode AstNode;
@@ -152,6 +153,14 @@ struct AstNode {
       AstNode **elements;
       i32 count;
     } init_list;
+
+    struct {
+      TypeBase type;
+      char *name;
+      AstNode **params;
+      i32 param_count;
+      AstNode *body;
+    } function;
   } as;
 };
 
