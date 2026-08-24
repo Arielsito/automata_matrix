@@ -240,6 +240,21 @@ static void ast_render(AstBuf *b, const AstNode *n) {
       }
       ast_append(b, ")");
       break;
+    case NODE_FUNCTION:
+      ast_append(b, "(function ");
+      render_type(b, n->as.function.type);
+      ast_appendf(b, " %s (", n->as.function.name);
+      for (i32 i = 0; i < n->as.function.param_count; i++) {
+        ast_render(b, n->as.function.params[i]);
+        if (i + 1 < n->as.function.param_count) ast_append(b, " ");
+      }
+      ast_append(b, ")");
+      if (n->as.function.body) {
+        ast_append(b, " ");
+        ast_render(b, n->as.function.body);
+      }
+      ast_append(b, ")");
+      break;
     case NODE_INIT_LIST:
       ast_append(b, "{");
       for (i32 i = 0; i < n->as.init_list.count; i++) {
