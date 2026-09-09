@@ -631,7 +631,13 @@ static Declarator* parse_declarator(bool is_abstract) {
 
   // identifiers
   d->name = NULL;
-  if (match(TOKEN_IDENTIFIER)) {
+  d->paren = NULL;
+  if (match(TOKEN_LEFT_PAREN)) {
+    Declarator *inner = parse_declarator(is_abstract);
+    if (inner == NULL) return NULL;
+    consume(TOKEN_RIGHT_PAREN, "Parser: Expected ')' after params.");
+    d->paren = inner;
+  } else if (match(TOKEN_IDENTIFIER)) {
     d->name = PUSH_ARRAY(perm_arena, char, parser.previous.length + 1);
     memcpy(d->name, parser.previous.start, parser.previous.length);
     d->name[parser.previous.length] = '\0';
@@ -662,7 +668,6 @@ static Declarator* parse_declarator(bool is_abstract) {
   }
 
   d->init = NULL;
-  d->paren = NULL;
   return d;
 }
 
