@@ -1,4 +1,4 @@
-//#include <stdio.h>
+#include <stdio.h>
 
 int main(void) {
   /* 1. Declaracion de todas las variables al inicio del bloque */
