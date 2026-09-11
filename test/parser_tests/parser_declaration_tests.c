@@ -76,6 +76,23 @@ Test(parser_decl, pointer_with_init) {
   assert_ast("int *p = 0;", "(program 1 (decl INT (* p (lit int 0))))");
 }
 
+Test(parser_decl, array_of_pointers) {
+  assert_ast("int (*p)[3];", "(program 1 (decl INT ((* p)[(lit int 3)])))");
+}
+
+Test(parser_decl, pointer_to_array) {
+  assert_ast("int *p[3];", "(program 1 (decl INT (* p[(lit int 3)])))");
+}
+
+Test(parser_decl, array_of_pointers_2d) {
+  assert_ast("int (*p)[5][2];", "(program 1 (decl INT ((* p)[(lit int 5)][(lit int 2)])))");
+}
+
+Test(parser_decl, pointer_to_array_of_pointers) {
+  assert_ast("int *(*q)[4];", "(program 1 (decl INT (* (* q)[(lit int 4)])))");
+}
+
+
 // declarations and control flow
 
 Test(parser_decl, multiple_decl_statements) {
