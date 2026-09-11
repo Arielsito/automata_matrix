@@ -97,12 +97,14 @@ static AstNode* unary();
 static AstNode* binary(AstNode*);
 static AstNode* assign(AstNode*);
 static AstNode* postfix(AstNode*);
+static AstNode* call(AstNode*);
 
 static ParseRule rules[] = {
   [TOKEN_INTEGER_LITERAL] = { number, NULL, PREC_NONE },
   [TOKEN_DOUBLE_LITERAL] = { number, NULL, PREC_NONE },
   [TOKEN_IDENTIFIER] = { variable, NULL, PREC_NONE },
-  [TOKEN_LEFT_PAREN] = { grouping, NULL, PREC_NONE },
+  // [TOKEN_LEFT_PAREN] = { grouping, NULL, PREC_NONE },
+  [TOKEN_LEFT_PAREN] = { grouping, call, PREC_CALL },
 
   [TOKEN_NOT] = { unary, NULL, PREC_NONE },
   [TOKEN_MINUS] = { unary, binary, PREC_TERM },
@@ -316,13 +318,23 @@ static void sync() {
   parser.panicMode = false;
   while (parser.current.type != TOKEN_EOF) {
     if (parser.previous.type == TOKEN_SEMICOLON) return;
+    if (parser.previous.type == TOKEN_RIGHT_BRACE) return;
     switch (parser.current.type) {
       case TOKEN_IF:
+      case TOKEN_ELSE:
       case TOKEN_WHILE:
+      case TOKEN_DO:
       case TOKEN_FOR:
       case TOKEN_RETURN:
+      case TOKEN_SWITCH:
+      case TOKEN_CASE:
+      case TOKEN_DEFAULT:
+      case TOKEN_BREAK:
+      case TOKEN_CONTINUE:
+      case TOKEN_SEMICOLON:
         return;
       default:
+        if (is_type_token(parser.current.type)) return;
         ;
     }
     advance();
@@ -1026,5 +1038,32 @@ static AstNode* postfix(AstNode* left) {
   n->as.unary.op = op;
   n->as.unary.postfix = true;
   n->as.unary.right = left;
+  return n;
+}
+
+static AstNode* call(AstNode *left) {
+  if (left == NULL) return NULL;
+  i32 line =parser.previous.line;
+
+  i32 cap = 8;
+  AstNode **args = PUSH_ARRAY(perm_arena, AstNode*, cap);
+  i32 count = 0;
+
+  if (parser.current.type != TOKEN_RIGHT_PAREN) {
+    do {
+      if (parser.current.type != TOKEN_RIGHT_PAREN) {
+        AstNode **n_args = grow_array(perm_arena, args, &cap, sizeof(AstNode*));
+        if (n_args == NULL) { error_at_current("Parser: too many arguments."); break; }
+        args = n_args;
+      }
+      args[count++] = parse_expression();
+    } while (match(TOKEN_COMMA));
+  }
+  consume(TOKEN_RIGHT_PAREN, "Parser: Expected ')' after arguments.");
+
+  AstNode *n = make_node(perm_arena, NODE_CALL, line);
+  n->as.call.callee = left;
+  n->as.call.args = count ? args : NULL;
+  n->as.call.arg_count = count;
   return n;
 }

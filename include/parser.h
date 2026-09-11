@@ -29,6 +29,7 @@ typedef enum nodetype {
   NODE_DECL,
   NODE_INIT_LIST,
   NODE_FUNCTION,
+  NODE_CALL,
 } NodeType;
 
 typedef struct AstNode AstNode;
@@ -97,6 +98,12 @@ struct AstNode {
       AstNode *object;
       AstNode *index;
     } index;
+
+    struct {
+      AstNode *callee;
+      AstNode **args;
+      i32 arg_count;
+    } call;
 
     struct {
       AstNode* expression;
