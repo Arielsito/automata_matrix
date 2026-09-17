@@ -11,6 +11,7 @@ add_library(compiler_core STATIC
   src/debug.c
   src/parser.c
   src/arena.c
+  src/semantic.c
 )
 
 add_executable(main
