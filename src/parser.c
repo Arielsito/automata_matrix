@@ -218,6 +218,12 @@ AstNode* compile(const char* source) {
     return NULL; // false
   }
 
+  if (!semantic_analysis(root)) {
+    arena_destroy(perm_arena);
+    perm_arena = NULL;
+    return NULL;
+  }
+
   return root; // true
 }
 

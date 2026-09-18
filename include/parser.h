@@ -15,6 +15,7 @@ typedef enum nodetype {
   NODE_UNARY,
   NODE_STATEMENT,
   NODE_INDEX,
+  NODE_CALL,
   // other nodes
   NODE_RETURN,
   NODE_BREAK,
@@ -29,7 +30,6 @@ typedef enum nodetype {
   NODE_DECL,
   NODE_INIT_LIST,
   NODE_FUNCTION,
-  NODE_CALL,
 } NodeType;
 
 typedef struct AstNode AstNode;
@@ -172,5 +172,6 @@ struct AstNode {
 };
 
 AstNode* compile(const char*);
+bool semantic_analysis(AstNode *);
 
 #endif
