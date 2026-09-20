@@ -30,7 +30,7 @@ static bool validate_unary(AstNode *n) { return true; }
 
 static bool validate_decl(AstNode *n) { return true; }
 
-bool semantic_analysis(AstNode *node) {
+bool compile(AstNode *node) {
   if (node == NULL) return true;
 
   return true;
