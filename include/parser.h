@@ -171,7 +171,6 @@ struct AstNode {
   } as;
 };
 
-AstNode* compile(const char*);
-bool semantic_analysis(AstNode *);
+AstNode* parse(const char*);
 
 #endif

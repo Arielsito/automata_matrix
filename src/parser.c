@@ -179,7 +179,7 @@ static void error_at_current(const char*);
 static void error_at_previous(const char*);
 static void sync();
 
-AstNode* compile(const char* source) {
+AstNode* parse(const char* source) {
   init_lexer();
   init_scan(source);
   if (perm_arena == NULL) {
@@ -216,12 +216,6 @@ AstNode* compile(const char* source) {
     arena_destroy(perm_arena);
     perm_arena = NULL;
     return NULL; // false
-  }
-
-  if (!semantic_analysis(root)) {
-    arena_destroy(perm_arena);
-    perm_arena = NULL;
-    return NULL;
   }
 
   return root; // true
