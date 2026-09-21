@@ -163,6 +163,7 @@ struct AstNode {
 
     struct {
       TypeBase type;
+      i32 ret_ptr_depth;
       char *name;
       AstNode **params;
       i32 param_count;

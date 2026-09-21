@@ -588,6 +588,7 @@ static AstNode* parse_decl_or_func() {
   if (match(TOKEN_LEFT_PAREN)) {
     AstNode *n = make_node(perm_arena, NODE_FUNCTION, line);
     n->as.function.type = type;
+    n->as.function.ret_ptr_depth = first->ptr_depth;
     n->as.function.name = first->name;
     n->as.function.params = NULL;
     n->as.function.param_count = 0;
