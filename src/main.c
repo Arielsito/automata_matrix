@@ -13,7 +13,7 @@ static void eval_expression() {
     }
     bool success = parse(buff) != NULL;
     if (!success) exit(65);
-    else printf("Parsed succesfully\n");
+    else { printf("Parsed succesfully\n"); parse_print_symtab(); }
   }
 }
 
@@ -46,7 +46,7 @@ static void runFile(const char *path) {
   bool success = parse(source) != NULL;
   free(source);
   if (!success) exit(65);
-  else printf("Parsed succesfully\n");
+  else { printf("Parsed succesfully\n"); parse_print_symtab(); }
 }
 
 int main(i32 argc, char *argv[]) {

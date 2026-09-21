@@ -5,6 +5,7 @@
 #include <string.h>
 #include "parser.h"
 #include "arena.h"
+#include "symtab.h"
 
 // presedence
 typedef enum presedence {
@@ -170,6 +171,7 @@ typedef struct parser {
 
 static Parser parser;
 static Arena *perm_arena; 
+static SymTab symtab;
 
 static void advance();
 static void consume(TokenType, const char*);
@@ -187,6 +189,8 @@ AstNode* parse(const char* source) {
     if (perm_arena == NULL) { fprintf(stderr, "Error: Out of memory.\n"); return NULL; }
   }
   else arena_clear(perm_arena);
+  if (!symtab_init(&symtab, perm_arena)) { fprintf(stderr, "Error: Out of memory.\n"); return NULL; }
+
   parser.hadError = false;
   parser.panicMode = false;
   parser.source = source;
@@ -380,6 +384,8 @@ static AstNode* parse_block() {
   n->as.block.statements = PUSH_ARRAY(perm_arena, AstNode*, 64);
   n->as.block.count = 0;
 
+  symtab_enter(&symtab, SCOPE_BLOCK);
+
   while (parser.current.type != TOKEN_RIGHT_BRACE && parser.current.type != TOKEN_EOF) {
     AstNode* stmt = parse_statement();
     if (parser.panicMode) {
@@ -400,6 +406,9 @@ static AstNode* parse_block() {
   }
 
   consume(TOKEN_RIGHT_BRACE, "Parser: Expected '}' at the end of the block.");
+
+  symtab_exit(&symtab);
+
   return n;
 }
 
@@ -453,6 +462,7 @@ static AstNode* parse_switch() {
   i32 count = 0;
 
   if (match(TOKEN_LEFT_BRACE)) {
+    symtab_enter(&symtab, SCOPE_BLOCK);
     while (
         parser.current.type != TOKEN_RIGHT_BRACE &&
         parser.current.type != TOKEN_EOF
@@ -470,6 +480,7 @@ static AstNode* parse_switch() {
     }
 
     consume(TOKEN_RIGHT_BRACE, "Parser: Expected '}' after switch.");
+    symtab_exit(&symtab);
   } else
     consume(TOKEN_SEMICOLON, "Parser: Expected ';' or '{' after switch.");
 
@@ -603,8 +614,17 @@ static AstNode* parse_decl_or_func() {
       }
     }
 
-    if (match(TOKEN_LEFT_BRACE)) n->as.function.body = parse_block();
+    if (match(TOKEN_LEFT_BRACE)){
+      symtab_enter(&symtab, SCOPE_FUNCTION);
+      for (i32 i = 0; i < n->as.function.param_count; i++)
+        symtab_add_decl(&symtab, n->as.function.params[i], SYM_PARAM);
+
+      n->as.function.body = parse_block(); 
+      symtab_exit(&symtab);
+    }
     else consume(TOKEN_SEMICOLON, "Parser: Expected ';' after function prototype.");
+
+    symtab_add_function(&symtab, n);
     return n;
   }
 
@@ -632,6 +652,9 @@ static AstNode* parse_decl_or_func() {
   n->as.decl.type = type;
   n->as.decl.declarators = list;
   n->as.decl.count = count;
+  
+  symtab_add_decl(&symtab, n, SYM_VAR);
+
   return n;
 }
 
@@ -1067,4 +1090,8 @@ static AstNode* call(AstNode *left) {
   n->as.call.args = count ? args : NULL;
   n->as.call.arg_count = count;
   return n;
+}
+
+void parse_print_symtab(void) {
+  symtab_print(&symtab, stdout);
 }

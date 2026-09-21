@@ -1,0 +1,28 @@
+int g = 5;
+double pi = 3.14;
+char *msg = "hola";
+unsigned long int big;
+int tabla[3][4];
+
+int suma(int a, int b);
+
+int suma(int a, int b) {
+  int r = a + b;
+  {
+    int a = -1;
+    r = r + a;
+  }
+  return r;
+}
+
+int main(void) {
+  int x = 10;
+  switch (x) {
+    case 1:
+      int y = 2;
+      break;
+    default:
+      break;
+  }
+  return 0;
+}

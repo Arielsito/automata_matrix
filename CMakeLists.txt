@@ -12,6 +12,7 @@ add_library(compiler_core STATIC
   src/parser.c
   src/arena.c
   src/semantic.c
+  src/symtab.c
 )
 
 add_executable(main

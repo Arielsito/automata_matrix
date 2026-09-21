@@ -173,5 +173,6 @@ struct AstNode {
 };
 
 AstNode* parse(const char*);
+void parse_print_symtab(void);
 
 #endif
