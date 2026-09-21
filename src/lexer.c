@@ -202,6 +202,9 @@ static void skip_whitespace() {
   for (;;) {
     char c = *scanner.current;
     switch(c) {
+      case '#':
+        while (*scanner.current != '\n' && *scanner.current != '\0') scanner.current++;
+        break;
       case ' ':
       case '\r':
       case '\t':
