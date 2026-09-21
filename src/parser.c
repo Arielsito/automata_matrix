@@ -1051,7 +1051,7 @@ static AstNode* call(AstNode *left) {
 
   if (parser.current.type != TOKEN_RIGHT_PAREN) {
     do {
-      if (parser.current.type != TOKEN_RIGHT_PAREN) {
+      if (count == cap) {
         AstNode **n_args = grow_array(perm_arena, args, &cap, sizeof(AstNode*));
         if (n_args == NULL) { error_at_current("Parser: too many arguments."); break; }
         args = n_args;
