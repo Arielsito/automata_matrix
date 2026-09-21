@@ -24,7 +24,7 @@ Test(parser_line, blank_lines_between) {
 }
 
 Test(parser_line, line_of_variable) {
-  AstNode *root = compile("x;\n");
+  AstNode *root = parse("x;\n");
   cr_assert(root != NULL);
   cr_assert_eq(root->as.program.statements[0]->line, 1);
 }

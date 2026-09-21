@@ -7,7 +7,7 @@
 #include <criterion/internal/assert.h>
 
 static inline bool parse_and_render(const char *src, char *out, u32 size) {
-  AstNode *root = compile(src);
+  AstNode *root = parse(src);
   if (root == NULL) return false;
   bool ok = ast_to_string(root, out, size);
   cr_assert(ok, "AST buffer too small for '%s'.", src);
@@ -25,12 +25,12 @@ static inline void assert_ast(const char *src, const char *expected) {
 }
 
 static inline void assert_parse_fails(const char *src) {
-  AstNode *root = compile(src);
+  AstNode *root = parse(src);
   cr_assert(root == NULL, "Expected '%s' to fail, but it parsed.", src);
 }
 
 static inline i32 statement_line(const char *src, u32 index) {
-  AstNode *root = compile(src);
+  AstNode *root = parse(src);
   cr_assert(root != NULL, "Expected '%s' to parse but it failed.", src);
   cr_assert(index < (u32)root->as.program.count,
       "Statement index %u out of range (program has %d).", index, root->as.program.count

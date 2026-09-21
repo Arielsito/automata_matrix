@@ -45,7 +45,7 @@ Test(parser_stream, growth_over_capacity) {
   char full[65536];
   snprintf(full, sizeof(full), "(program %u%s)", 300, expected);
 
-  AstNode *root = compile(src);
+  AstNode *root = parse(src);
   cr_assert(root != NULL, "Expected long program to parse.");
   char out[65536];
   bool ok = ast_to_string(root, out, sizeof(out));
