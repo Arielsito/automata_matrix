@@ -1,8 +1,7 @@
+#include "common.h"
 #include "parser.h"
 #include "../include/debug.h"
 #include "semantic.h"
-#include <stdio.h>
-#include <stdlib.h>
 
 static void eval_expression() {
   char buff[1024];
