@@ -1,8 +1,10 @@
 #include "debug.h"
 #include "lexer.h"
 #include "parser.h"
+#include "semantic.h"
 #include <stdarg.h>
 #include <stddef.h>
+#include <stdio.h>
 // TokenType values in strings for debugging
 static const char* const token_names[] = {
   [TOKEN_IDENTIFIER]      = "IDENTIFIER",
@@ -288,4 +290,128 @@ bool ast_to_string(const AstNode *node, char *out, u32 size) {
   ast_render(&b, node);
   b.buf[b.pos] = '\0';
   return !b.truncated;
+}
+
+// Semantic
+static void print_literal(const AstNode *node) {
+  switch (node->as.literal.literalType) {
+    case TOKEN_INTEGER_LITERAL:
+      printf("%d", node->as.literal.ival);
+      break;
+    case TOKEN_DOUBLE_LITERAL:
+      printf("%g", node->as.literal.dval);
+      break;
+    case TOKEN_CHAR_LITERAL:
+      printf("%c", node->as.literal.cval);
+      break;
+    case TOKEN_STRING_LITERAL:
+      printf("\"%s\"", node->as.literal.sval);
+      break;
+    default: 
+      printf("?");
+      break;
+  }
+}
+
+static void print_variable(const AstNode *node) {
+  printf("%s", node->as.variable.name);
+}
+
+static const char *operator_lexeme(TokenType op) {
+  switch (op) {
+    case TOKEN_PLUS:           return "+";
+    case TOKEN_MINUS:          return "-";
+    case TOKEN_STAR:           return "*";
+    case TOKEN_SLASH:          return "/";
+    case TOKEN_MOD:            return "%";
+    case TOKEN_PLUS_PLUS:      return "++";
+    case TOKEN_MINUS_MINUS:    return "--";
+    case TOKEN_EQUAL:          return "=";
+    case TOKEN_PLUS_EQUAL:     return "+=";
+    case TOKEN_MINUS_EQUAL:    return "-=";
+    case TOKEN_STAR_EQUAL:     return "*=";
+    case TOKEN_SLASH_EQUAL:    return "/=";
+    case TOKEN_MOD_EQUAL:      return "%=";
+    case TOKEN_LSE:            return "<<=";
+    case TOKEN_RSE:            return ">>=";
+    case TOKEN_AND_BITW_EQUAL: return "&=";
+    case TOKEN_OR_BITW_EQUAL:  return "|=";
+    case TOKEN_XOR_BITW_EQUAL: return "^=";
+    case TOKEN_EQUAL_EQUAL:    return "==";
+    case TOKEN_NOT_EQUAL:      return "!=";
+    case TOKEN_LESS:           return "<";
+    case TOKEN_LESS_EQUAL:     return "<=";
+    case TOKEN_GREATER:        return ">";
+    case TOKEN_GREATER_EQUAL:  return ">=";
+    case TOKEN_NOT:            return "!";
+    case TOKEN_AND:            return "&&";
+    case TOKEN_OR:             return "||";
+    case TOKEN_NOT_BITW:       return "~";
+    case TOKEN_AND_BITW:       return "&";
+    case TOKEN_OR_BITW:        return "|";
+    case TOKEN_XOR_BITW:       return "^";
+    case TOKEN_LEFT_SHIFT:     return "<<";
+    case TOKEN_RIGHT_SHIFT:    return ">>";
+    default:                   return "?";
+  }
+}
+
+static void print_visited_node(const AstNode *node, void *context) {
+  (void)context;
+
+  switch (node->type) {
+    case NODE_LITERAL:
+      print_literal(node);
+      break;
+      
+    case NODE_VARIABLE:
+      print_variable(node);
+      break;
+      
+    case NODE_BINARY:
+      printf("%s", operator_lexeme(node->as.binary.op));
+      break;
+      
+    case NODE_ASSIGN:
+      printf("%s", operator_lexeme(node->as.assign.op));
+      break;
+      
+    case NODE_UNARY:
+      printf("%s", operator_lexeme(node->as.unary.op));
+      break;
+
+    default:
+      printf("?");
+      break;
+      
+  }
+}
+
+void semantic_print_tree(const AstNode *node, TraversalOrder order) {
+  if (node == NULL) return;
+
+  if (node->type == NODE_PROGRAM) {
+    for (i32 i = 0; i < node->as.program.count; i++) {
+      const AstNode *statement = node->as.program.statements[i];
+      if (statement != NULL && statement->type == NODE_STATEMENT) {
+        traverse_expression(
+          statement->as.statement.expression,
+          order,
+          print_visited_node,
+          NULL
+        );
+        putchar('\n');
+      }
+    }
+    return;
+  }
+  if (node->type == NODE_STATEMENT) {
+        traverse_expression(
+          node->as.statement.expression,
+          order,
+          print_visited_node,
+          NULL
+        );
+        putchar('\n');
+  }
 }
