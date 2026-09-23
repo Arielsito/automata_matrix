@@ -1,5 +1,6 @@
 #include "parser.h"
-// #include "../include/debug.h"
+#include "../include/debug.h"
+#include "semantic.h"
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -11,9 +12,16 @@ static void eval_expression() {
       printf("\n");
       break;
     }
-    bool success = parse(buff) != NULL;
+    const AstNode *tree = parse(buff);
+    bool success = tree != NULL;
     if (!success) exit(65);
-    else { printf("Parsed succesfully\n"); parse_print_symtab(); }
+    else { 
+      printf("Parsed succesfully\n");
+      parse_print_symtab();
+      semantic_print_tree(tree, TRAVERSE_INORDER);
+      semantic_print_tree(tree, TRAVERSE_PREORDER);
+      semantic_print_tree(tree, TRAVERSE_POSTORDER);
+    }
   }
 }
 
@@ -43,10 +51,17 @@ static char *readFile(const char* path) {
 
 static void runFile(const char *path) {
   char *source = readFile(path);
-  bool success = parse(source) != NULL;
+  const AstNode *tree = parse(source);
+  bool success = tree != NULL;
   free(source);
   if (!success) exit(65);
-  else { printf("Parsed succesfully\n"); parse_print_symtab(); }
+  else { 
+    printf("Parsed succesfully\n");
+    parse_print_symtab();
+    semantic_print_tree(tree, TRAVERSE_INORDER);
+    semantic_print_tree(tree, TRAVERSE_PREORDER);
+    semantic_print_tree(tree, TRAVERSE_POSTORDER);
+  }
 }
 
 int main(i32 argc, char *argv[]) {
