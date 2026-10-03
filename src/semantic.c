@@ -4,9 +4,7 @@
 
 
 // AST
-static void traverse(const AstNode*, TraversalOrder, AstVisitFn, void*);
-
-static void traverse(const AstNode* node, TraversalOrder order, AstVisitFn visit, void* context) {
+void traverse(const AstNode* node, TraversalOrder order, AstVisitFn visit, void* context) {
   if (node == NULL || visit == NULL) return;
 
   switch (node->type) {
@@ -95,8 +93,4 @@ bool compile(AstNode *node) {
   if (node == NULL) return false;
 
   return true;
-}
-
-void traverse_expression(const AstNode *node, TraversalOrder order, AstVisitFn visit, void *context) {
-  traverse(node, order, visit, context);
 }

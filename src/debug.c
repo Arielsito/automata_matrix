@@ -293,30 +293,6 @@ bool ast_to_string(const AstNode *node, char *out, u32 size) {
 }
 
 // Semantic
-static void print_literal(const AstNode *node) {
-  switch (node->as.literal.literalType) {
-    case TOKEN_INTEGER_LITERAL:
-      printf("%d", node->as.literal.ival);
-      break;
-    case TOKEN_DOUBLE_LITERAL:
-      printf("%g", node->as.literal.dval);
-      break;
-    case TOKEN_CHAR_LITERAL:
-      printf("%c", node->as.literal.cval);
-      break;
-    case TOKEN_STRING_LITERAL:
-      printf("\"%s\"", node->as.literal.sval);
-      break;
-    default: 
-      printf("?");
-      break;
-  }
-}
-
-static void print_variable(const AstNode *node) {
-  printf("%s", node->as.variable.name);
-}
-
 static const char *operator_lexeme(TokenType op) {
   switch (op) {
     case TOKEN_PLUS:           return "+";
@@ -356,62 +332,73 @@ static const char *operator_lexeme(TokenType op) {
   }
 }
 
-static void print_visited_node(const AstNode *node, void *context) {
-  (void)context;
+#define MAX_QUADS 256
 
+static Quadruple quadruples[MAX_QUADS];
+static i32 qcount = 0;
+static i32 tmp_counter = 0;
+
+static const char *operand(const AstNode *node) {
+  if (!node) return "(null)";
+  if (node->type == NODE_VARIABLE) return node->as.variable.name;
+  if (node->type == NODE_LITERAL) return "(literal)";
+  for (i32 i = 0; i < qcount; i++)
+    if (quadruples[i].node == node) return quadruples[i].result;
+  return "(null)";
+}
+
+static void emit(const AstNode *node, TokenType op, const char *a1, const char *a2) {
+  if (qcount >= MAX_QUADS) return;
+  Quadruple *q = &quadruples[qcount++];
+  q->op = op;
+  q->arg1 = a1;
+  q->arg2 = a2;
+  q->node = node;
+  snprintf(q->result, sizeof(q->result), "T%d", tmp_counter++);
+}
+
+static void quad_visitor(const AstNode *node, void *ctx) {
+  (void)ctx;
+  if (!node) return;
   switch (node->type) {
-    case NODE_LITERAL:
-      print_literal(node);
-      break;
-      
-    case NODE_VARIABLE:
-      print_variable(node);
-      break;
-      
     case NODE_BINARY:
-      printf("%s", operator_lexeme(node->as.binary.op));
+      emit(node, node->as.binary.op, operand(node->as.binary.left), operand(node->as.binary.right));
       break;
-      
-    case NODE_ASSIGN:
-      printf("%s", operator_lexeme(node->as.assign.op));
-      break;
-      
     case NODE_UNARY:
-      printf("%s", operator_lexeme(node->as.unary.op));
+      emit(node, node->as.unary.op, operand(node->as.unary.right), "(null)");
       break;
-
-    default:
-      printf("?");
+    case NODE_ASSIGN:
+      emit(node, node->as.assign.op, operand(node->as.assign.target), operand(node->as.assign.value));
       break;
-      
+    default: break;
   }
 }
 
-void semantic_print_tree(const AstNode *node, TraversalOrder order) {
-  if (node == NULL) return;
+void print_quadruples(const AstNode *root) {
+  if (!root) return;
 
-  if (node->type == NODE_PROGRAM) {
-    for (i32 i = 0; i < node->as.program.count; i++) {
-      const AstNode *statement = node->as.program.statements[i];
-      if (statement != NULL && statement->type == NODE_STATEMENT) {
-        traverse_expression(
-          statement->as.statement.expression,
-          order,
-          print_visited_node,
-          NULL
-        );
-        putchar('\n');
-      }
+  qcount = 0;
+  tmp_counter = 0;
+
+  if (root->type == NODE_PROGRAM) {
+    for (i32 i = 0; i < root->as.program.count; i++) {
+      const AstNode *statement = root->as.program.statements[i];
+      if (statement && statement->type == NODE_STATEMENT) traverse(statement->as.statement.expression, TRAVERSE_POSTORDER, quad_visitor, NULL);
     }
-    return;
+  } else if (root->type == NODE_STATEMENT) traverse(root->as.statement.expression, TRAVERSE_POSTORDER, quad_visitor, NULL);
+  else traverse(root, TRAVERSE_POSTORDER, quad_visitor, NULL);
+
+  printf("\nQuadruples\n");
+  printf("| op | arg1       | arg2       | result   |\n");
+  printf("|----|------------|------------|----------|\n");
+  i32 i;
+  for(i = 0; i < qcount; i++) {
+    printf("| %2s | %-10s | %-10s | %-8s |\n",
+      operator_lexeme(quadruples[i].op),
+      quadruples[i].arg1 ? quadruples[i].arg1 : "",
+      quadruples[i].arg2 ? quadruples[i].arg2 : "",
+      quadruples[i].result
+    );
   }
-  if (node->type == NODE_STATEMENT) {
-        traverse_expression(
-          node->as.statement.expression,
-          order,
-          print_visited_node,
-          NULL
-        );
-        putchar('\n');
-  }
+  putchar('\n');
 }

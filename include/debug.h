@@ -11,4 +11,6 @@ bool ast_to_string(const AstNode*, char*, u32);
 
 void semantic_print_tree(const AstNode*, TraversalOrder);
 
+void print_quadruples(const AstNode*);
+
 #endif
