@@ -71,8 +71,6 @@ Symbol* symtab_lookup(const SymTab *t, const char *name) {
   return NULL;
 }
 
-// build helpers (called from parser.c)
- 
 // value known at declaration: literal initializer, optionally negated
 static Value const_value(AstNode *e) {
   Value v = { VAL_NONE };
@@ -97,7 +95,6 @@ static Value const_value(AstNode *e) {
  
 static void fill_function(Symbol *s, AstNode *fn) {
   s->type = fn->as.function.type;
-  s->ptr_depth = fn->as.function.ret_ptr_depth;
   s->param_count = fn->as.function.param_count;
   s->is_defined = fn->as.function.body != NULL;
   s->node = fn;
@@ -109,13 +106,10 @@ bool symtab_add_decl(SymTab *t, AstNode *decl, SymbolKind kind) {
   for (i32 i = 0; i < decl->as.decl.count; i++) {
     Declarator *d = &decl->as.decl.declarators[i];
     if (d->name == NULL) continue;
- 
+
     Symbol *s = symtab_declare(t, d->name, kind, decl->line, NULL);
     if (s == NULL) { ok = false; continue; }
     s->type = decl->as.decl.type;
-    s->ptr_depth = d->ptr_depth;
-    s->arr_dims = d->arr_dims;
-    s->arr_rank = d->arr_rank_counts;
     s->init = d->init;
     s->value = const_value(d->init);
     s->node = decl;
@@ -166,11 +160,10 @@ static const char* symbol_kind_name(SymbolKind k) {
   }
 }
  
-// one row per symbol, scopes in creation order, symbols in declaration order
 void symtab_print(const SymTab *t, FILE *out) {
-  fprintf(out, "%-5s %-9s %-5s %-6s | %-12s %-6s %-26s %-3s %-12s %-4s %s\n",
-          "SCOPE", "SCOPEKIND", "DEPTH", "PARENT", "NAME", "KIND", "TYPE", "PTR", "VALUE", "LINE", "EXTRA");
- 
+  fprintf(out, "%-5s %-9s %-5s %-6s | %-12s %-6s %-26s %-12s %-4s %s\n",
+          "SCOPE", "SCOPEKIND", "DEPTH", "PARENT", "NAME", "KIND", "TYPE", "VALUE", "LINE", "EXTRA");
+
   for (const Scope *s = t->first; s != NULL; s = s->next) {
     for (const Symbol *sym = s->head; sym != NULL; sym = sym->next) {
       const TypeBase *ty = &sym->type;
@@ -178,29 +171,20 @@ void symtab_print(const SymTab *t, FILE *out) {
       snprintf(type, sizeof(type), "%s%s%s%s%s",
                ty->is_unsigned ? "unsigned " : "", ty->is_signed ? "signed " : "",
                ty->is_short ? "short " : "", ty->is_long ? "long " : "", base_name(ty->base));
- 
+
       char value[24];
       switch (sym->value.kind) {
         case VAL_INT: snprintf(value, sizeof(value), "%lld", (long long)sym->value.i); break;
         case VAL_DOUBLE: snprintf(value, sizeof(value), "%g", sym->value.d); break;
         case VAL_STRING: snprintf(value, sizeof(value), "\"%.16s\"", sym->value.s); break;
         default:
-          if (sym->init == NULL) snprintf(value, sizeof(value), "-");
-          else if (sym->init->type == NODE_INIT_LIST) snprintf(value, sizeof(value), "{...}");
-          else snprintf(value, sizeof(value), "<expr>");
+          snprintf(value, sizeof(value), sym->init == NULL ? "-" : "<expr>");
       }
- 
-      fprintf(out, "%-5d %-9s %-5d %-6d | %-12s %-6s %-26s %-3d %-12s %-4d ",
+
+      fprintf(out, "%-5d %-9s %-5d %-6d | %-12s %-6s %-26s %-12s %-4d ",
               s->id, scope_kind_name(s->kind), s->depth, s->parent ? s->parent->id : -1,
-              sym->name, symbol_kind_name(sym->kind), type, sym->ptr_depth, value, sym->line);
- 
-      for (i32 i = 0; i < sym->arr_rank; i++) {
-        AstNode *dim = sym->arr_dims[i];
-        if (dim == NULL) fprintf(out, "[]");
-        else if (dim->type == NODE_LITERAL && dim->as.literal.literalType == TOKEN_INTEGER_LITERAL)
-          fprintf(out, "[%d]", dim->as.literal.ival);
-        else fprintf(out, "[?]");
-      }
+              sym->name, symbol_kind_name(sym->kind), type, value, sym->line);
+
       if (sym->kind == SYM_FUNC)
         fprintf(out, "(%d params, %s)", sym->param_count, sym->is_defined ? "defined" : "prototype");
       fputc('\n', out);

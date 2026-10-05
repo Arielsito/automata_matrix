@@ -21,6 +21,8 @@ typedef struct quadruple {
 typedef void (*AstVisitFn)(const AstNode*, void*);
 
 void traverse(const AstNode*, TraversalOrder, AstVisitFn, void*);
-bool compile(AstNode *);
+bool compile(const AstNode *);
+
+void semantic_print_symtab(void);
 
 #endif

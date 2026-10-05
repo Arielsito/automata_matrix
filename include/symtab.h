@@ -41,9 +41,6 @@ struct Symbol {
   const char *name;
   SymbolKind kind;
   TypeBase type;
-  i32 ptr_depth;
-  AstNode **arr_dims;
-  i32 arr_rank;
   AstNode *init;
   Value value;
   i32 line;

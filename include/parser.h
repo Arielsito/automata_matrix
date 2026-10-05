@@ -74,6 +74,7 @@ struct AstNode {
 
     struct {
       char* name;
+      struct Symbol *sym;
     } variable;
 
     struct {
@@ -173,6 +174,5 @@ struct AstNode {
 };
 
 AstNode* parse(const char*);
-void parse_print_symtab(void);
 
 #endif

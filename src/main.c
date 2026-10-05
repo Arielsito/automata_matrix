@@ -13,7 +13,7 @@ static void eval_expression() {
     const AstNode *tree = parse(buff);
     bool success = tree != NULL;
     if (!success) exit(65);
-    else { printf("Parsed succesfully\n"); parse_print_symtab(); print_quadruples(tree); }
+    else { printf("Parsed succesfully\n"); compile(tree); semantic_print_symtab(); print_quadruples(tree); }
   }
 }
 
@@ -47,7 +47,7 @@ static void runFile(const char *path) {
   bool success = tree != NULL;
   free(source);
   if (!success) exit(65);
-  else { printf("Parsed succesfully\n"); parse_print_symtab(); print_quadruples(tree); }
+  else { printf("Parsed succesfully\n"); compile(tree); semantic_print_symtab(); print_quadruples(tree); }
 }
 
 int main(i32 argc, char *argv[]) {
