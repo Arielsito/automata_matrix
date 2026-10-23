@@ -3,6 +3,7 @@
 
 #include "common.h"
 #include "lexer.h"
+#include "semantic_type.h"
 
 typedef enum nodetype {
   // program level
@@ -49,11 +50,13 @@ typedef struct Declarator {
   i32 arr_rank_counts;
   AstNode *init;
   struct Declarator *paren;
+  struct Symbol *sym;
 } Declarator;
 
 struct AstNode {
   NodeType type;
   i32 line;
+  SemanticResult semantic;
   union {
     struct {
       AstNode** statements;
