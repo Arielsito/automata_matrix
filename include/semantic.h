@@ -17,6 +17,7 @@ typedef enum operand_kind {
   OPERAND_SYMBOL,
   OPERAND_CONSTANT,
   OPERAND_TEMPORARY,
+  OPERAND_LABEL,
 } OperandKind;
 
 struct Symbol;
@@ -28,6 +29,7 @@ typedef struct operand {
   union {
     const struct Symbol *symbol;
     i32 temporary_id;
+    i32 label_id;
 
     union {
       i32 integer;
@@ -50,6 +52,9 @@ typedef enum quad_op {
   QUAD_GE,
   QUAD_EQ,
   QUAD_NE,
+  QUAD_JUMP_IF_ZERO,
+  QUAD_JUMP_IF_NONZERO,
+  QUAD_LABEL,
   QUAD_BIT_AND,
   QUAD_BIT_OR,
   QUAD_BIT_XOR,

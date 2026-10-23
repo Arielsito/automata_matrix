@@ -191,6 +191,7 @@ static bool expression_error(AstNode *n) {
 typedef struct quad_context {
   QuadrupleList *output;
   i32 next_temporary;
+  i32 next_label;
 } QuadContext;
 
 static bool operand_from_leaf(const AstNode*, Operand*);
@@ -715,6 +716,31 @@ static bool generate_expression(const AstNode *n, QuadContext *ctx, Operand *out
 
   // binary (default)
   if (n->type != NODE_BINARY) return false;
+
+  if (n->as.binary.op == TOKEN_AND || n->as.binary.op == TOKEN_OR) {
+    bool is_and = n->as.binary.op == TOKEN_AND;
+    QuadOp jump = is_and ? QUAD_JUMP_IF_ZERO : QUAD_JUMP_IF_NONZERO;
+    Operand left;
+    if (!generate_expression(n->as.binary.left, ctx, &left)) return false;
+
+    Operand result = new_temporary(ctx, SEM_TYPE_INT);
+    Operand end = { .kind = OPERAND_LABEL, .as.label_id = ctx->next_label++ };
+    Operand unused = { .kind = OPERAND_NONE };
+    Operand initial = { .kind = OPERAND_CONSTANT, .type = SEM_TYPE_INT, .as.constant.integer = is_and ? 0 : 1 };
+    Operand alternative = initial;
+    alternative.as.constant.integer = is_and ? 1 : 0;
+
+    if (!emit_quad(ctx, QUAD_COPY, initial, unused, result, n->line)) return false;
+    if (!emit_quad(ctx, jump, left, unused, end, n->line)) return false;
+
+    Operand right;
+    if (!generate_expression(n->as.binary.right, ctx, &right)) return false;
+    if (!emit_quad(ctx, jump, right, unused, end, n->line)) return false;
+    if (!emit_quad(ctx, QUAD_COPY, alternative, unused, result, n->line)) return false;
+    if (!emit_quad(ctx, QUAD_LABEL, unused, unused, end, n->line)) return false;
+    *out = result;
+    return true;
+  }
 
   Operand left, right;
 
