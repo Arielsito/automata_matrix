@@ -2,6 +2,7 @@
 #include "lexer.h"
 #include "parser.h"
 #include "semantic.h"
+#include "semantic_type.h"
 #include <stdarg.h>
 #include <stddef.h>
 #include <stdio.h>
@@ -293,112 +294,98 @@ bool ast_to_string(const AstNode *node, char *out, u32 size) {
 }
 
 // Semantic
-static const char *operator_lexeme(TokenType op) {
-  switch (op) {
-    case TOKEN_PLUS:           return "+";
-    case TOKEN_MINUS:          return "-";
-    case TOKEN_STAR:           return "*";
-    case TOKEN_SLASH:          return "/";
-    case TOKEN_MOD:            return "%";
-    case TOKEN_PLUS_PLUS:      return "++";
-    case TOKEN_MINUS_MINUS:    return "--";
-    case TOKEN_EQUAL:          return "=";
-    case TOKEN_PLUS_EQUAL:     return "+=";
-    case TOKEN_MINUS_EQUAL:    return "-=";
-    case TOKEN_STAR_EQUAL:     return "*=";
-    case TOKEN_SLASH_EQUAL:    return "/=";
-    case TOKEN_MOD_EQUAL:      return "%=";
-    case TOKEN_LSE:            return "<<=";
-    case TOKEN_RSE:            return ">>=";
-    case TOKEN_AND_BITW_EQUAL: return "&=";
-    case TOKEN_OR_BITW_EQUAL:  return "|=";
-    case TOKEN_XOR_BITW_EQUAL: return "^=";
-    case TOKEN_EQUAL_EQUAL:    return "==";
-    case TOKEN_NOT_EQUAL:      return "!=";
-    case TOKEN_LESS:           return "<";
-    case TOKEN_LESS_EQUAL:     return "<=";
-    case TOKEN_GREATER:        return ">";
-    case TOKEN_GREATER_EQUAL:  return ">=";
-    case TOKEN_NOT:            return "!";
-    case TOKEN_AND:            return "&&";
-    case TOKEN_OR:             return "||";
-    case TOKEN_NOT_BITW:       return "~";
-    case TOKEN_AND_BITW:       return "&";
-    case TOKEN_OR_BITW:        return "|";
-    case TOKEN_XOR_BITW:       return "^";
-    case TOKEN_LEFT_SHIFT:     return "<<";
-    case TOKEN_RIGHT_SHIFT:    return ">>";
-    default:                   return "?";
+static void print_quad_operand(const Operand *operand, i32 width) {
+  switch (operand->kind) {
+    case OPERAND_NONE:
+      printf("%-*s", width, "-");
+      break;
+
+    case OPERAND_SYMBOL:
+      printf("%-*s", width, operand->as.symbol->name);
+      break;
+
+    case OPERAND_TEMPORARY:
+      printf("T%-*d", width - 1, operand->as.temporary_id);
+      break;
+
+    case OPERAND_CONSTANT:
+      switch (operand->type) {
+        case SEM_TYPE_FLOAT:
+        case SEM_TYPE_DOUBLE:
+        case SEM_TYPE_LONG_DOUBLE:
+          printf("%-*.17g", width, operand->as.constant.floating);
+          break;
+
+        default:
+          printf("%-*d", width, operand->as.constant.integer);
+          break;
+      }
+      break;
+
+    default:
+      printf("%-*s", width, "?");
+      break;
   }
 }
 
-#define MAX_QUADS 256
-
-static Quadruple quadruples[MAX_QUADS];
-static i32 qcount = 0;
-static i32 tmp_counter = 0;
-
-static const char *operand(const AstNode *node) {
-  if (!node) return "(null)";
-  if (node->type == NODE_VARIABLE) return node->as.variable.name;
-  if (node->type == NODE_LITERAL) return "(literal)";
-  for (i32 i = 0; i < qcount; i++)
-    if (quadruples[i].node == node) return quadruples[i].result;
-  return "(null)";
-}
-
-static void emit(const AstNode *node, TokenType op, const char *a1, const char *a2) {
-  if (qcount >= MAX_QUADS) return;
-  Quadruple *q = &quadruples[qcount++];
-  q->op = op;
-  q->arg1 = a1;
-  q->arg2 = a2;
-  q->node = node;
-  snprintf(q->result, sizeof(q->result), "T%d", tmp_counter++);
-}
-
-static void quad_visitor(const AstNode *node, void *ctx) {
-  (void)ctx;
-  if (!node) return;
-  switch (node->type) {
-    case NODE_BINARY:
-      emit(node, node->as.binary.op, operand(node->as.binary.left), operand(node->as.binary.right));
-      break;
-    case NODE_UNARY:
-      emit(node, node->as.unary.op, operand(node->as.unary.right), "(null)");
-      break;
-    case NODE_ASSIGN:
-      emit(node, node->as.assign.op, operand(node->as.assign.target), operand(node->as.assign.value));
-      break;
-    default: break;
+char *get_type(SemanticType type) {
+  switch (type) {
+    case SEM_TYPE_VOID: return "void";
+    case SEM_TYPE_CHAR: return "char";
+    case SEM_TYPE_SIGNED_CHAR: return "signed char";
+    case SEM_TYPE_UNSIGNED_CHAR: return "unsigned char";
+    case SEM_TYPE_SHORT: return "short";
+    case SEM_TYPE_UNSIGNED_SHORT: return "unsigned short";
+    case SEM_TYPE_INT: return "int";
+    case SEM_TYPE_UNSIGNED_INT: return "unsigned int";
+    case SEM_TYPE_LONG: return "long";
+    case SEM_TYPE_UNSIGNED_LONG: return "unsigned long";
+    case SEM_TYPE_FLOAT: return "float";
+    case SEM_TYPE_DOUBLE: return "double";
+    case SEM_TYPE_LONG_DOUBLE: return "long double";
+    default: return "unknown";
   }
 }
 
-void print_quadruples(const AstNode *root) {
-  if (!root) return;
+void print_quadruples(const QuadrupleList *list) {
+  if (list == NULL) return;
 
-  qcount = 0;
-  tmp_counter = 0;
+  static const char *const names[] = {
+    [QUAD_ADD]     = "+",
+    [QUAD_SUB]     = "-",
+    [QUAD_NEG]     = "NEG",
+    [QUAD_MUL]     = "*",
+    [QUAD_DIV]     = "/",
+    [QUAD_MOD]     = "%",
+    [QUAD_NOT]     = "!",
+    [QUAD_LT]      = "<",
+    [QUAD_LE]      = "<=",
+    [QUAD_GT]      = ">",
+    [QUAD_GE]      = ">=",
+    [QUAD_EQ]      = "==",
+    [QUAD_NE]      = "!=",
+    [QUAD_BIT_AND] = "&",
+    [QUAD_BIT_OR]  = "|",
+    [QUAD_BIT_XOR] = "^",
+    [QUAD_BIT_NOT] = "~",
+    [QUAD_SHL]     = "<<",
+    [QUAD_SHR]     = ">>",
+    [QUAD_COPY]    = "COPY",
+    [QUAD_CONVERT] = "CONVERT",
+  };
 
-  if (root->type == NODE_PROGRAM) {
-    for (i32 i = 0; i < root->as.program.count; i++) {
-      const AstNode *statement = root->as.program.statements[i];
-      if (statement && statement->type == NODE_STATEMENT) traverse(statement->as.statement.expression, TRAVERSE_POSTORDER, quad_visitor, NULL);
-    }
-  } else if (root->type == NODE_STATEMENT) traverse(root->as.statement.expression, TRAVERSE_POSTORDER, quad_visitor, NULL);
-  else traverse(root, TRAVERSE_POSTORDER, quad_visitor, NULL);
+  printf("\nQuadruples:\n");
+  printf("| %-8s | %-16s | %-16s | %-16s | %-16s |\n", "Op", "Arg1", "Arg2", "Result", "Type");
+  printf("|----------|------------------|------------------|------------------|------------------|\n");
 
-  printf("\nQuadruples\n");
-  printf("| op | arg1       | arg2       | result   |\n");
-  printf("|----|------------|------------|----------|\n");
-  i32 i;
-  for(i = 0; i < qcount; i++) {
-    printf("| %2s | %-10s | %-10s | %-8s |\n",
-      operator_lexeme(quadruples[i].op),
-      quadruples[i].arg1 ? quadruples[i].arg1 : "",
-      quadruples[i].arg2 ? quadruples[i].arg2 : "",
-      quadruples[i].result
-    );
+  for (i32 i = 0; i < list->count; i++) {
+    const Quadruple *q = &list->items[i];
+    printf("| %-8s | ", names[q->op]);
+    print_quad_operand(&q->arg1, 16);
+    printf(" | ");
+    print_quad_operand(&q->arg2, 16);
+    printf(" | ");
+    print_quad_operand(&q->result, 16);
+    printf(" | %-16s |\n", get_type(q->result.type));
   }
-  putchar('\n');
 }
