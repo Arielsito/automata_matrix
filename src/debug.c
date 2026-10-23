@@ -322,6 +322,10 @@ static void print_quad_operand(const Operand *operand, i32 width) {
       }
       break;
 
+    case OPERAND_LABEL:
+      printf("L%-*d", width - 1, operand->as.label_id);
+      break;
+
     default:
       printf("%-*s", width, "?");
       break;
@@ -351,27 +355,30 @@ void print_quadruples(const QuadrupleList *list) {
   if (list == NULL) return;
 
   static const char *const names[] = {
-    [QUAD_ADD]     = "+",
-    [QUAD_SUB]     = "-",
-    [QUAD_NEG]     = "NEG",
-    [QUAD_MUL]     = "*",
-    [QUAD_DIV]     = "/",
-    [QUAD_MOD]     = "%",
-    [QUAD_NOT]     = "!",
-    [QUAD_LT]      = "<",
-    [QUAD_LE]      = "<=",
-    [QUAD_GT]      = ">",
-    [QUAD_GE]      = ">=",
-    [QUAD_EQ]      = "==",
-    [QUAD_NE]      = "!=",
-    [QUAD_BIT_AND] = "&",
-    [QUAD_BIT_OR]  = "|",
-    [QUAD_BIT_XOR] = "^",
-    [QUAD_BIT_NOT] = "~",
-    [QUAD_SHL]     = "<<",
-    [QUAD_SHR]     = ">>",
-    [QUAD_COPY]    = "COPY",
-    [QUAD_CONVERT] = "CONVERT",
+    [QUAD_ADD]             = "+",
+    [QUAD_SUB]             = "-",
+    [QUAD_NEG]             = "NEG",
+    [QUAD_MUL]             = "*",
+    [QUAD_DIV]             = "/",
+    [QUAD_MOD]             = "%",
+    [QUAD_NOT]             = "!",
+    [QUAD_LT]              = "<",
+    [QUAD_LE]              = "<=",
+    [QUAD_GT]              = ">",
+    [QUAD_GE]              = ">=",
+    [QUAD_EQ]              = "==",
+    [QUAD_NE]              = "!=",
+    [QUAD_JUMP_IF_ZERO]    = "JZ",
+    [QUAD_JUMP_IF_NONZERO] = "JNZ",
+    [QUAD_LABEL]           = "LABEL",
+    [QUAD_BIT_AND]         = "&",
+    [QUAD_BIT_OR]          = "|",
+    [QUAD_BIT_XOR]         = "^",
+    [QUAD_BIT_NOT]         = "~",
+    [QUAD_SHL]             = "<<",
+    [QUAD_SHR]             = ">>",
+    [QUAD_COPY]            = "COPY",
+    [QUAD_CONVERT]         = "CONVERT",
   };
 
   printf("\nQuadruples:\n");
@@ -386,6 +393,10 @@ void print_quadruples(const QuadrupleList *list) {
     print_quad_operand(&q->arg2, 16);
     printf(" | ");
     print_quad_operand(&q->result, 16);
-    printf(" | %-16s |\n", get_type(q->result.type));
+    const char *type =
+      q->result.kind == OPERAND_LABEL ||
+      q->result.kind == OPERAND_NONE 
+      ? "-" : get_type(q->result.type);
+    printf(" | %-16s |\n", type);
   }
 }
