@@ -1,6 +1,27 @@
 #include "common.h"
 #include "parser.h"
-#include "../include/debug.h"
+#include "semantic.h"
+#include "debug.h"
+#include <stdio.h>
+
+static bool analyze_tree(AstNode *tree) {
+  if (!compile(tree)) {
+    fprintf(stderr, "Semantic analysis failed\n");
+    return false;
+  }
+
+  QuadrupleList quads = {0};
+
+  if (!generate_quadruples(tree, &quads)) {
+    fprintf(stderr, "Quadruple generation failed: unsupported construct or instruction limit reached.\n");
+    return false;
+  }
+
+  printf("Semantic analysis successful.\n");
+  semantic_print_symtab();
+  print_quadruples(&quads);
+  return true;
+}
 
 static void eval_expression() {
   char buff[1024];
@@ -10,10 +31,10 @@ static void eval_expression() {
       printf("\n");
       break;
     }
-    const AstNode *tree = parse(buff);
+    AstNode *tree = parse(buff);
     bool success = tree != NULL;
     if (!success) exit(65);
-    else { printf("Parsed succesfully\n"); compile(tree); semantic_print_symtab(); print_quadruples(tree); }
+    else analyze_tree(tree);
   }
 }
 
@@ -43,11 +64,11 @@ static char *readFile(const char* path) {
 
 static void runFile(const char *path) {
   char *source = readFile(path);
-  const AstNode *tree = parse(source);
+  AstNode *tree = parse(source);
   bool success = tree != NULL;
   free(source);
   if (!success) exit(65);
-  else { printf("Parsed succesfully\n"); compile(tree); semantic_print_symtab(); print_quadruples(tree); }
+  else analyze_tree(tree);
 }
 
 int main(i32 argc, char *argv[]) {
