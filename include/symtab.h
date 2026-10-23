@@ -5,6 +5,7 @@
 #include "common.h"
 #include "arena.h"
 #include "parser.h"
+#include "semantic_type.h"
 
 typedef enum symbolkind {
   SYM_VAR,
@@ -41,6 +42,7 @@ struct Symbol {
   const char *name;
   SymbolKind kind;
   TypeBase type;
+  SemanticType semantic_type;
   AstNode *init;
   Value value;
   i32 line;
@@ -83,6 +85,7 @@ Symbol *symtab_lookup(const SymTab *, const char *);
 Symbol *symtab_lookup_local(const SymTab *, const char *);
 
 bool symtab_add_decl(SymTab *, AstNode *decl, SymbolKind kind);
+Symbol *symtab_add_declarator(SymTab *, AstNode *decl, i32 index, SymbolKind kind, Symbol **prev);
 bool symtab_add_function(SymTab *, AstNode *fn);
 
 void symtab_print(const SymTab *, FILE *);

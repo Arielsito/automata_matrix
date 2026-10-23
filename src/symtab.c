@@ -99,20 +99,28 @@ static void fill_function(Symbol *s, AstNode *fn) {
   s->is_defined = fn->as.function.body != NULL;
   s->node = fn;
 }
+
+Symbol *symtab_add_declarator(SymTab *t, AstNode *decl, i32 index, SymbolKind kind, Symbol **prev) {
+  Declarator *d = &decl->as.decl.declarators[index];
+  const Declarator *named = d;
+  while (named != NULL && named->name == NULL) named = named->paren;
+  if (prev != NULL) *prev = NULL;
+  if (named == NULL) return NULL;
+
+  Symbol *s = symtab_declare(t, named->name, kind, decl->line, prev);
+  if (s == NULL) return NULL;
+  s->type = decl->as.decl.type;
+  s->init = d->init;
+  s->value = const_value(d->init);
+  s->node = decl;
+  return s;
+}
  
 // A duplicate name in the same scope is skipped (the first one wins).
 bool symtab_add_decl(SymTab *t, AstNode *decl, SymbolKind kind) {
   bool ok = true;
   for (i32 i = 0; i < decl->as.decl.count; i++) {
-    Declarator *d = &decl->as.decl.declarators[i];
-    if (d->name == NULL) continue;
-
-    Symbol *s = symtab_declare(t, d->name, kind, decl->line, NULL);
-    if (s == NULL) { ok = false; continue; }
-    s->type = decl->as.decl.type;
-    s->init = d->init;
-    s->value = const_value(d->init);
-    s->node = decl;
+    if (symtab_add_declarator(t, decl, i, kind, NULL) == NULL) ok = false;
   }
   return ok;
 }
