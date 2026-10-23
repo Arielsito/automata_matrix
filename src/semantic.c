@@ -282,9 +282,6 @@ static bool validate_assign(AstNode *n) {
   if (target.has_error || value.has_error)
     return expression_error(n);
 
-  if (target.type == SEM_TYPE_UNCHECKED || value.type == SEM_TYPE_UNCHECKED)
-    return true;
-
   if (!target.is_lvalue) {
     sem_error(n->line, "target not modifiable.");
     return expression_error(n);
@@ -321,9 +318,6 @@ static bool validate_binary(AstNode *n) {
   if (left.has_error || right.has_error)
     return expression_error(n);
 
-  if (left.type == SEM_TYPE_UNCHECKED || right.type == SEM_TYPE_UNCHECKED)
-    return true;
-
   SemanticType result = binary_result_type(n->as.binary.op, left.type, right.type);
 
   if (result == SEM_TYPE_ERROR) {
@@ -340,8 +334,6 @@ static bool validate_unary(AstNode *n) {
 
   if (operand.has_error)
     return expression_error(n);
-
-  if (operand.type == SEM_TYPE_UNCHECKED) return true;
 
   SemanticType result = SEM_TYPE_ERROR;
 
@@ -860,7 +852,7 @@ static bool declare_decl(AstNode *d, SymbolKind kind) {
 
       if (initializer->semantic.has_error)
         ok = false;
-      else if (type != SEM_TYPE_ERROR && initializer->semantic.type != SEM_TYPE_UNCHECKED && !can_assign_type(type, initializer->semantic.type)) {
+      else if (type != SEM_TYPE_ERROR && !can_assign_type(type, initializer->semantic.type)) {
         sem_error(d->line, "initializer incompatible with declared type.");
         ok = false;
       }
@@ -878,7 +870,12 @@ static void visit_expr(const AstNode *n) {
     expression_error(node);
     return;
   }
-  apply((AstNode *)n);
+  apply(node);
+
+  if (!node->semantic.has_error && node->semantic.type == SEM_TYPE_UNCHECKED) {
+    sem_error(node->line, "expression type is unresolved or not implemented.");
+    expression_error(node);
+  }
 }
 
 static void check_expr(AstNode *e) {
@@ -888,6 +885,10 @@ static void check_expr(AstNode *e) {
       AstNode *element = e->as.init_list.elements[i];
       check_expr(element);
       if (element->semantic.has_error) expression_error(e);
+    }
+    if (!e->semantic.has_error) {
+      sem_error(e->line, "initializer lists are not supported yet.");
+      expression_error(e);
     }
     return;
   }

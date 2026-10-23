@@ -12,12 +12,11 @@ static bool analyze_tree(AstNode *tree) {
 
   QuadrupleList quads = {0};
 
+  printf("Semantic analysis successful.\n");
   if (!generate_quadruples(tree, &quads)) {
     fprintf(stderr, "Quadruple generation failed: unsupported construct or instruction limit reached.\n");
     return false;
   }
-
-  printf("Semantic analysis successful.\n");
   semantic_print_symtab();
   print_quadruples(&quads);
   return true;
