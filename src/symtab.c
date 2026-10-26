@@ -94,8 +94,11 @@ static Value const_value(AstNode *e) {
 }
  
 static void fill_function(Symbol *s, AstNode *fn) {
+  s->semantic_type = SEM_TYPE_FUNCTION;
   s->type = fn->as.function.type;
-  s->param_count = fn->as.function.param_count;
+
+  if (fn->as.function.has_prototype) s->prototype = fn;
+  s->param_count = s->prototype != NULL ? s->prototype->as.function.param_count : fn->as.function.param_count;
   s->is_defined = fn->as.function.body != NULL;
   s->node = fn;
 }
@@ -135,9 +138,17 @@ bool symtab_add_function(SymTab *t, AstNode *fn) {
     fill_function(s, fn);
     return true;
   }
-  if (prev != NULL && prev->kind == SYM_FUNC && !prev->is_defined && fn->as.function.body != NULL)
-    fill_function(prev, fn);
-  return false;
+  if (prev == NULL || prev->kind != SYM_FUNC) return false;
+  if (fn->as.function.body == NULL) {
+    if (prev->prototype == NULL && fn->as.function.has_prototype) {
+      prev->prototype = fn;
+      prev->param_count = fn->as.function.param_count;
+    }
+    return true;
+  }
+  if (prev->is_defined) return false;
+  fill_function(prev, fn);
+  return true;
 }
  
 // print

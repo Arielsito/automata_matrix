@@ -178,6 +178,31 @@ static SemanticType declared_type(TypeBase t) {
   }
 }
 
+/*
+ * Functions
+ */
+// ========================================================================================
+static SemanticType parameter_type(const AstNode *parameter) {
+  SemanticType type = declared_type(parameter->as.decl.type);
+  if (!is_arithmetic_type(type)) return SEM_TYPE_ERROR;
+
+  for (i32 i = 0; i < parameter->as.decl.count; i++) {
+    const Declarator *declarator = &parameter->as.decl.declarators[i];
+
+    for (const Declarator *part = declarator; part != NULL; part = part->paren)
+      if (part->ptr_depth != 0 || part->arr_rank_counts != 0) return SEM_TYPE_ERROR;
+  }
+
+  return type;
+}
+
+static SemanticType default_argument_promotion(SemanticType type) {
+  if (type == SEM_TYPE_FLOAT) return SEM_TYPE_DOUBLE;
+
+  return integer_promotion(type);
+}
+// ========================================================================================
+
 static bool expression_error(AstNode *n) {
   n->semantic = (SemanticResult){ SEM_TYPE_ERROR, false, true };
   return false;
@@ -379,13 +404,131 @@ static bool validate_call(AstNode *n) {
   bool failed = n->as.call.callee->semantic.has_error;
   for (i32 i = 0; i < n->as.call.arg_count; i++)
     if (n->as.call.args[i]->semantic.has_error) failed = true;
-  return failed ? expression_error(n) : true;
+
+  if (failed) return expression_error(n);
+
+  AstNode *callee = n->as.call.callee;
+
+  if (callee->type != NODE_VARIABLE || callee->semantic.type != SEM_TYPE_FUNCTION) {
+    sem_error(n->line, "called expression is not a function.");
+    return expression_error(n);
+  }
+
+  Symbol *function = callee->as.variable.sym;
+  const AstNode *prototype = function->prototype;
+
+  if (prototype != NULL && n->as.call.arg_count != prototype->as.function.param_count) {
+    sem_error(n->line, "wrong number of arguments to function '%s'.", function->name);
+    return expression_error(n);
+  }
+
+  for (i32 i = 0; i < n->as.call.arg_count; i++) {
+    SemanticType actual = n->as.call.args[i]->semantic.type;
+    if (!is_arithmetic_type(actual)) {
+      sem_error(n->line, "unsupported type for argument %d of '%s'.", i + 1, function->name);
+      return expression_error(n);
+    }
+
+    if (prototype != NULL && !can_assign_type(parameter_type(prototype->as.function.params[i]), actual)) {
+      sem_error(n->line, "incompatible type for argument %d of '%s'.", i + 1, function->name);
+      return expression_error(n);
+    }
+  }
+
+  n->semantic = (SemanticResult){ declared_type(function->type), false, false };
+  return true;
 }
 
 static bool validate_decl(AstNode *n) { return true; }
 
 static bool validate_function(AstNode *n) {
-  symtab_add_function(&symtab, n);
+  if (n->as.function.ret_ptr_depth != 0) {
+    sem_error(n->line, "pointer return types are outside the current scalar subset.");
+    return false;
+  }
+
+  if (declared_type(n->as.function.type) == SEM_TYPE_ERROR) {
+    sem_error(n->line, "invalid function return type.");
+    return false;
+  }
+
+  for (i32 i = 0; i < n->as.function.param_count; i++) {
+    AstNode *param = n->as.function.params[i];
+
+    if (parameter_type(param) == SEM_TYPE_ERROR) {
+      sem_error(param->line, "invalid or unsupported type for parameter %d of '%s'.", i + 1, n->as.function.name);
+      return false;
+    }
+
+    const char *name = param->as.decl.count == 0 ? NULL : param->as.decl.declarators[0].name;
+    if (name != NULL) {
+      for (i32 j = 0; j < i; j++) {
+        const AstNode *earlier = n->as.function.params[j];
+        const char *earlier_name = earlier->as.decl.count == 0 ? NULL : earlier->as.decl.declarators[0].name;
+        if (earlier_name != NULL && strcmp(name, earlier_name) == 0) {
+          sem_error(param->line, "duplicate parameter name '%s' in function '%s'.", name, n->as.function.name);
+          return false;
+        }
+      }
+    }
+  }
+
+  Symbol *previous = symtab_lookup_local(&symtab, n->as.function.name);
+  if (previous != NULL) {
+    if (previous->kind != SYM_FUNC) {
+      sem_error(n->line, "'%s' was already declared as an object.", n->as.function.name);
+      return false;
+    }
+
+    SemanticType previous_return = declared_type(previous->type);
+    SemanticType current_return = declared_type(n->as.function.type);
+
+    if (previous_return != current_return) {
+      sem_error(n->line, "conflicting return types for function '%s'.", n->as.function.name);
+      return false;
+    }
+
+    const AstNode *previous_function = previous->prototype != NULL ? previous->prototype : previous->node;
+
+    if (previous_function->as.function.has_prototype && n->as.function.has_prototype) {
+      if (previous_function->as.function.param_count != n->as.function.param_count) {
+        sem_error(n->line, "conflicting parameter counts for function '%s'.", n->as.function.name);
+        return false;
+      }
+
+      for (i32 i = 0; i < n->as.function.param_count; i++) {
+        SemanticType previous_param = parameter_type(previous_function->as.function.params[i]);
+        SemanticType current_param = parameter_type(n->as.function.params[i]);
+
+        if (previous_param != current_param) {
+          sem_error(n->line, "conflicting types for parameter %d of function '%s'.", i + 1, n->as.function.name);
+          return false;
+        }
+      }
+    } else if (previous_function->as.function.has_prototype != n->as.function.has_prototype) {
+      const AstNode *prototype = n->as.function.has_prototype ? n : previous_function;
+      const AstNode *without_prototype = n->as.function.has_prototype ? previous_function : n;
+
+      if (without_prototype->as.function.body != NULL && without_prototype->as.function.param_count != prototype->as.function.param_count) {
+        sem_error(n->line, "conflicting parameter counts for function '%s'.", n->as.function.name);
+        return false;
+      }
+
+      for (i32 i = 0; i < prototype->as.function.param_count; i++) {
+        SemanticType type = parameter_type(prototype->as.function.params[i]);
+
+        if (type != default_argument_promotion(type)) {
+          sem_error(n->line, "parameter %d of '%s' conflicts with its declaration without prototype.", i + 1, n->as.function.name);
+          return false;
+        }
+      }
+    }
+  }
+
+  if (!symtab_add_function(&symtab, n)) {
+    sem_error(n->line, "could not declare register function '%s'.", n->as.function.name);
+    return false;
+  }
   return true;
 }
 // ========================================================================================
@@ -902,13 +1045,14 @@ static void walk_list(AstNode **v, i32 count) {
 }
 
 static void walk_function(AstNode *fn) {
-  apply(fn);
+  if (!apply(fn)) return;
   if (fn->as.function.body == NULL) return;
 
   if (symtab_enter(&symtab, SCOPE_FUNCTION) == NULL) { sem_errors++; return; }
   for (i32 i = 0; i < fn->as.function.param_count; i++)
     declare_decl(fn->as.function.params[i], SYM_PARAM);
-  walk(fn->as.function.body);
+  AstNode *body = fn->as.function.body;
+  walk_list(body->as.block.statements, body->as.block.count);
   symtab_exit(&symtab);
 }
 

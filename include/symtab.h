@@ -48,6 +48,7 @@ struct Symbol {
   i32 line;
   Scope *scope;
   AstNode *node;
+  AstNode *prototype;
   bool is_defined;
   i32 param_count;
   Symbol *next;
