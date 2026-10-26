@@ -171,6 +171,7 @@ struct AstNode {
       char *name;
       AstNode **params;
       i32 param_count;
+      bool has_prototype;
       AstNode *body;
     } function;
   } as;

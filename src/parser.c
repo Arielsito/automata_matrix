@@ -700,6 +700,8 @@ static void parse_param_list(AstNode *fn) {
   AstNode **params = PUSH_ARRAY(perm_arena, AstNode*, cap);
   i32 count = 0;
 
+  fn->as.function.has_prototype = parser.current.type != TOKEN_RIGHT_PAREN;
+
   if (parser.current.type != TOKEN_RIGHT_PAREN) {
     if (parser.current.type == TOKEN_VOID) advance();
     else {
