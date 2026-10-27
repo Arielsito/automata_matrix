@@ -13,6 +13,8 @@ add_library(compiler_core STATIC
   src/arena.c
   src/semantic.c
   src/symtab.c
+  src/ir.c
+  src/type_rules.c
 )
 
 add_executable(main

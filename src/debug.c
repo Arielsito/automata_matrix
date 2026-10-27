@@ -1,12 +1,10 @@
 #include "debug.h"
 #include "lexer.h"
 #include "parser.h"
-#include "semantic.h"
 #include "semantic_type.h"
 #include <stdarg.h>
-#include <stddef.h>
-#include <stdio.h>
-// TokenType values in strings for debugging
+
+// TokenType values in strings for debugging 
 static const char* const token_names[] = {
   [TOKEN_IDENTIFIER]      = "IDENTIFIER",
   [TOKEN_DIGIT]           = "DIGIT",
@@ -377,6 +375,9 @@ void print_quadruples(const QuadrupleList *list) {
     [QUAD_BIT_NOT]         = "~",
     [QUAD_SHL]             = "<<",
     [QUAD_SHR]             = ">>",
+    [QUAD_FUNC_BEGIN]      = "FUNC",
+    [QUAD_FUNC_END]        = "END_FUNC",
+    [QUAD_RETURN]          = "RETURN",
     [QUAD_COPY]            = "COPY",
     [QUAD_CONVERT]         = "CONVERT",
   };
