@@ -133,6 +133,7 @@ static bool validate_unary(AstNode *);
 static bool validate_call(AstNode *);
 static bool validate_decl(AstNode *);
 static bool validate_function(AstNode *);
+static bool validate_return(AstNode *);
 // ========================================================================================
 
  
@@ -182,6 +183,8 @@ static SemanticType declared_type(TypeBase t) {
  * Functions
  */
 // ========================================================================================
+static const AstNode *current_function;
+
 static SemanticType parameter_type(const AstNode *parameter) {
   SemanticType type = declared_type(parameter->as.decl.type);
   if (!is_arithmetic_type(type)) return SEM_TYPE_ERROR;
@@ -259,6 +262,7 @@ static SemanticRules rules[] = {
   [NODE_CALL] = validate_call,
   [NODE_DECL] = validate_decl,
   [NODE_FUNCTION] = validate_function,
+  [NODE_RETURN] = validate_return,
 };
 
 static bool apply(AstNode *n) {
@@ -531,6 +535,35 @@ static bool validate_function(AstNode *n) {
   }
   return true;
 }
+
+static bool validate_return(AstNode *n) {
+  if (current_function == NULL) {
+    sem_error(n->line, "return statement not within a function.");
+    return false;
+  }
+
+  AstNode *value = n->as.return_stmt.value;
+  SemanticType expected = declared_type(current_function->as.function.type);
+
+  if (value == NULL) {
+    if (expected != SEM_TYPE_VOID) {
+      sem_error(n->line, "non-void function '%s' must return a value.", current_function->as.function.name);
+      return false;
+    }
+    return true;
+  }
+  if (value->semantic.has_error) return false;
+  if (expected == SEM_TYPE_VOID) {
+    sem_error(n->line, "void function '%s' cannot return an expression.", current_function->as.function.name);
+    return false;
+  }
+  if (!can_assign_type(expected, value->semantic.type)) {
+    sem_error(n->line, "incompatible return type in function '%s'.", current_function->as.function.name);
+    return false;
+  }
+
+  return true;
+}
 // ========================================================================================
 
 // typecheck
@@ -541,10 +574,10 @@ static SemanticType integer_promotion(SemanticType type) {
       return SEM_TYPE_INT;
 
     case SEM_TYPE_CHAR:
-      return CHAR_MAX <= INT_MAX
-        ? SEM_TYPE_INT
-        : SEM_TYPE_UNSIGNED_INT;
-
+      // return CHAR_MAX <= INT_MAX
+      //   ? SEM_TYPE_INT
+      //   : SEM_TYPE_UNSIGNED_INT;
+      //
     case SEM_TYPE_UNSIGNED_CHAR:
       return UCHAR_MAX <= INT_MAX
         ? SEM_TYPE_INT
@@ -1049,10 +1082,17 @@ static void walk_function(AstNode *fn) {
   if (fn->as.function.body == NULL) return;
 
   if (symtab_enter(&symtab, SCOPE_FUNCTION) == NULL) { sem_errors++; return; }
+
+  const AstNode *previous_function = current_function;
+  current_function = fn;
+
   for (i32 i = 0; i < fn->as.function.param_count; i++)
     declare_decl(fn->as.function.params[i], SYM_PARAM);
+
   AstNode *body = fn->as.function.body;
   walk_list(body->as.block.statements, body->as.block.count);
+
+  current_function = previous_function;
   symtab_exit(&symtab);
 }
 
@@ -1088,6 +1128,7 @@ static void walk(AstNode *n) {
       return;
     case NODE_RETURN:
       check_expr(n->as.return_stmt.value);
+      apply(n);
       return;
     case NODE_IF:
       check_expr(n->as.if_stmt.condition);
@@ -1124,6 +1165,7 @@ bool compile(AstNode *node) {
   if (!symtab_init(&symtab, sem_arena)) { fprintf(stderr, "Error: Out of memory.\n"); return false; }
 
   sem_errors = 0;
+  current_function = NULL;
   walk(node);
   return sem_errors == 0;
 }
