@@ -276,6 +276,7 @@ static bool validate_call(AstNode *n) {
 
   Symbol *function = callee->as.variable.sym;
   const AstNode *prototype = function->prototype;
+  n->as.call.prototype = prototype;
 
   if (prototype != NULL && n->as.call.arg_count != prototype->as.function.param_count) {
     sem_error(n->line, "wrong number of arguments to function '%s'.", function->name);
@@ -387,6 +388,7 @@ static bool validate_function(AstNode *n) {
     sem_error(n->line, "could not declare register function '%s'.", n->as.function.name);
     return false;
   }
+  n->as.function.sym = symtab_lookup_local(&symtab, n->as.function.name);
   return true;
 }
 

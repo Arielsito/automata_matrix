@@ -1,4 +1,5 @@
 #include "debug.h"
+#include "ir.h"
 #include "lexer.h"
 #include "parser.h"
 #include "semantic_type.h"
@@ -378,6 +379,9 @@ void print_quadruples(const QuadrupleList *list) {
     [QUAD_FUNC_BEGIN]      = "FUNC",
     [QUAD_FUNC_END]        = "END_FUNC",
     [QUAD_RETURN]          = "RETURN",
+    [QUAD_PARAM]           = "PARAM",
+    [QUAD_ARG]             = "ARG",
+    [QUAD_CALL]            = "CALL",
     [QUAD_COPY]            = "COPY",
     [QUAD_CONVERT]         = "CONVERT",
   };

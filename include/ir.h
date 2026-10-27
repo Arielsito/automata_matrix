@@ -60,6 +60,9 @@ typedef enum quad_op {
   QUAD_RETURN,
   QUAD_COPY,
   QUAD_CONVERT,
+  QUAD_PARAM,
+  QUAD_ARG,
+  QUAD_CALL,
   //...
 } QuadOp;
 

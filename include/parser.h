@@ -104,6 +104,7 @@ struct AstNode {
     } index;
 
     struct {
+      const AstNode *prototype;
       AstNode *callee;
       AstNode **args;
       i32 arg_count;
@@ -169,6 +170,7 @@ struct AstNode {
       TypeBase type;
       i32 ret_ptr_depth;
       char *name;
+      struct Symbol *sym;
       AstNode **params;
       i32 param_count;
       bool has_prototype;

@@ -1,12 +1,19 @@
 #include "ir.h"
+#include "parser.h"
+#include "semantic_type.h"
 #include "type_rules.h"
+#include "symtab.h"
+#include <stdbool.h>
 
 typedef struct quad_context {
   QuadrupleList *output;
   i32 next_temporary;
   i32 next_label;
+  const Symbol *current_function;
 } QuadContext;
 
+static SemanticType call_argument_type(const AstNode*, i32);
+static bool generate_call(const AstNode*, QuadContext*, Operand*);
 static bool operand_from_leaf(const AstNode*, Operand*);
 static Operand new_temporary(QuadContext*, SemanticType);
 static bool emit_quad(QuadContext*, QuadOp, Operand, Operand, Operand, i32);
@@ -14,6 +21,75 @@ static bool convert_operand(QuadContext*, Operand*, SemanticType, i32);
 static bool generate_binary_operation(QuadContext*, TokenType, Operand, Operand, i32, Operand*);
 static bool generate_expression(const AstNode*, QuadContext*, Operand*);
 static bool generate_node(const AstNode*, QuadContext*);
+
+static SemanticType call_argument_type(const AstNode *call, i32 index) {
+  const AstNode *prototype = call->as.call.prototype;
+
+  if (prototype != NULL) 
+    return declared_type(prototype->as.function.params[index]->as.decl.type);
+  return default_argument_promotion(call->as.call.args[index]->semantic.type);
+}
+
+static bool generate_call(const AstNode *n, QuadContext *ctx, Operand *out) {
+  if (n->as.call.callee->type != NODE_VARIABLE) return false;
+  if (n->semantic.type != SEM_TYPE_VOID && !is_arithmetic_type(n->semantic.type)) return false;
+  Operand function;
+  if (!operand_from_leaf(n->as.call.callee, &function)) return false;
+  if (function.kind != OPERAND_SYMBOL || function.as.symbol->kind != SYM_FUNC) return false;
+
+  i32 count = n->as.call.arg_count;
+  const AstNode *prototype = n->as.call.prototype;
+
+  if (count > MAX_QUADRUPLES || (prototype != NULL && count != prototype->as.function.param_count)) return false;
+
+  Operand unused = { .kind = OPERAND_NONE };
+  i32 first_argument = ctx->next_temporary;
+  ctx->next_temporary += count;
+
+  for (i32 i = 0; i < count; i++) {
+    Operand value;
+    if (!generate_expression(n->as.call.args[i], ctx, &value)) return false;
+    if (!is_arithmetic_type(value.type)) return false;
+    SemanticType type = call_argument_type(n, i);
+    if (!convert_operand(ctx, &value, type, n->line)) return false;
+
+    Operand saved = {
+      .kind = OPERAND_TEMPORARY,
+      .type = type,
+      .as.temporary_id = first_argument + i
+    };
+    if (!emit_quad(ctx, QUAD_COPY, value, unused, saved, n->line)) return false;
+  }
+
+  for (i32 i = 0; i < count; i++) {
+    Operand saved = {
+      .kind = OPERAND_TEMPORARY,
+      .type = call_argument_type(n, i),
+      .as.temporary_id = first_argument + i
+    };
+    Operand position = {
+      .kind = OPERAND_CONSTANT,
+      .type = SEM_TYPE_INT,
+      .as.constant.integer = i
+    };
+    if (!emit_quad(ctx, QUAD_ARG, saved, position, unused, n->line)) return false;
+  }
+
+  Operand argument_count = {
+    .kind = OPERAND_CONSTANT,
+    .type = SEM_TYPE_INT,
+    .as.constant.integer = count
+  };
+  Operand result = {
+    .kind = OPERAND_NONE,
+    .type = SEM_TYPE_VOID
+  };
+  if (n->semantic.type != SEM_TYPE_VOID) result = new_temporary(ctx, n->semantic.type);
+  if (!emit_quad(ctx, QUAD_CALL, function, argument_count, result, n->line)) return false;
+
+  *out = result;
+  return true;
+}
 
 static bool operand_from_leaf(const AstNode *node, Operand *out) {
   if (node == NULL || out == NULL) return false;
@@ -143,7 +219,9 @@ static bool generate_expression(const AstNode *n, QuadContext *ctx, Operand *out
 
   *out = (Operand){ .kind = OPERAND_NONE };
 
-  if (n->semantic.has_error || !is_arithmetic_type(n->semantic.type)) return false;
+  if (n->semantic.has_error) return false;
+  if (n->type == NODE_CALL) return generate_call(n, ctx, out);
+  if (!is_arithmetic_type(n->semantic.type)) return false;
 
   // literals and variables
   if (n->type == NODE_LITERAL || n->type == NODE_VARIABLE) return operand_from_leaf(n, out);
@@ -325,6 +403,70 @@ static bool generate_node(const AstNode *node, QuadContext *ctx) {
         if (!emit_quad(ctx, QUAD_COPY, value, unused, destination, node->line)) return false;
       }
       return true;
+
+    case NODE_BLOCK:
+      for (i32 i = 0; i < node->as.block.count; i++)
+        if (!generate_node(node->as.block.statements[i], ctx)) return false;
+      return true;
+
+    case NODE_FUNCTION: {
+      if (node->as.function.body == NULL) return true;
+      if (ctx->current_function != NULL) return false;
+
+      const Symbol *symbol = node->as.function.sym;
+      if (symbol == NULL || symbol->kind != SYM_FUNC) return false;
+
+      Operand function = {
+        .kind = OPERAND_SYMBOL,
+        .type = SEM_TYPE_FUNCTION,
+        .as.symbol = symbol
+      };
+      Operand unused = { .kind = OPERAND_NONE };
+
+      ctx->current_function = symbol;
+
+      bool ok = emit_quad(ctx, QUAD_FUNC_BEGIN, function, unused, unused, node->line);
+
+      for (i32 i = 0; ok && i < node->as.function.param_count; i++) {
+        const AstNode *param = node->as.function.params[i];
+        if (param->as.decl.count != 1) { ok = false; break; }
+        const Symbol *target = param->as.decl.declarators[0].sym;
+        if (target == NULL || target->kind != SYM_PARAM || !is_arithmetic_type(target->semantic_type)) {
+          ok = false;
+          break;
+        }
+
+        Operand position = {
+          .kind = OPERAND_CONSTANT,
+          .type = SEM_TYPE_INT,
+          .as.constant.integer = i
+        };
+        Operand destination = {
+          .kind = OPERAND_SYMBOL,
+          .type = target->semantic_type,
+          .as.symbol = target
+        };
+        ok = emit_quad(ctx, QUAD_PARAM, position, unused, destination, param->line);
+      }
+
+      if (ok) ok = generate_node(node->as.function.body, ctx) && emit_quad(ctx, QUAD_FUNC_END, function, unused, unused, node->line);
+      ctx->current_function = NULL;
+      return ok;
+    }
+
+    case NODE_RETURN: {
+      if (ctx->current_function == NULL) return false;
+
+      SemanticType expected = declared_type(ctx->current_function->type);
+      Operand value = { .kind = OPERAND_NONE };
+      Operand unused = { .kind = OPERAND_NONE };
+      if (node->as.return_stmt.value != NULL) {
+        if (!generate_expression(node->as.return_stmt.value, ctx, &value)) return false;
+        if (!convert_operand(ctx, &value, expected, node->line)) return false;
+      } else if (expected != SEM_TYPE_VOID) return false;
+
+      return emit_quad(ctx, QUAD_RETURN, value, unused, unused, node->line);
+    }
 
     default: return false;
   }
